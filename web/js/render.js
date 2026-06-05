@@ -22,6 +22,13 @@ P.render = (function () {
     setVars();
     P.audio.setCoherence(P.engine.localCoherence());
 
+    // You just stepped from one voice into another — mark it so the change of
+    // place is felt, not missed.
+    if (n.kind !== 'exit' && P.engine.regionChanged()) {
+      showRegionBanner(P.engine.enteredRegion(), drift);
+      P.audio.crossing();
+    }
+
     renderStatus(n, drift);
 
     const reader = el('reader');
@@ -38,6 +45,17 @@ P.render = (function () {
 
     renderExits(n, drift, reader);
     reader.scrollTop = 0;
+  }
+
+  // A brief, centered announcement of the voice you've just entered. Drifts a
+  // little when you're lost, like everything else — but stays legible, because
+  // knowing *where* you are never tells you where the exit is. It's place, not
+  // a compass.
+  function showRegionBanner(label, drift) {
+    let banner = el('region-banner');
+    if (!banner) { banner = h('div', { id: 'region-banner' }); document.body.appendChild(banner); }
+    banner.textContent = '— ' + P.degrade.label(label || '', drift * 0.35, 'region') + ' —';
+    banner.classList.remove('show'); void banner.offsetWidth; banner.classList.add('show');
   }
 
   function renderStatus(n, drift) {

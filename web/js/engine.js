@@ -20,6 +20,8 @@ P.engine = (function () {
     streakLow: 0,   // consecutive low-coherence rooms (fatigue)
     onChange: null,
     ended: false,
+    regionChanged: false, // did the last move cross from one voice into another?
+    enteredRegion: null,  // the themeLabel just entered (only when regionChanged)
   };
 
   function init(graph) {
@@ -43,6 +45,10 @@ P.engine = (function () {
     if (state.ended) return;
     const target = node(toId);
     if (!target) return;
+    // Crossing into a different source-voice is a sense of place worth marking.
+    const fromTheme = state.node ? state.node.theme : null;
+    state.regionChanged = fromTheme !== null && fromTheme !== target.theme;
+    state.enteredRegion = state.regionChanged ? target.themeLabel : null;
     state.node = target;
     state.run.pos = toId;
     state.run.visited[toId] = (state.run.visited[toId] || 0) + 1;
@@ -105,6 +111,8 @@ P.engine = (function () {
   return {
     init, current, node, move, newRun, drift, localCoherence, visitedCount,
     addNote, journal, noteWords,
+    regionChanged: () => state.regionChanged,
+    enteredRegion: () => state.enteredRegion,
     state,
     set onChange(fn) { state.onChange = fn; },
     isEnded: () => state.ended,

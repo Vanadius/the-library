@@ -131,4 +131,22 @@ body::after { /* drift haze: a cold film that thickens in the deep */
 /* the end screen, after the exit */
 #screen.ending h1 { font-size: clamp(22px,5vw,40px); letter-spacing: 0.18em; }
 
+/* region-crossing banner — a momentary title-card, centered, that announces a
+   new voice and then dissolves to reveal the passage. This is *place*, never a
+   compass: it tells you which book you've wandered into, nothing about the way out. */
+#region-banner {
+  position: fixed; top: 35%; left: 0; right: 0; z-index: 55;
+  text-align: center; pointer-events: none;
+  color: var(--amber); letter-spacing: 0.4em; text-transform: uppercase;
+  font-size: clamp(15px, 3vw, 21px); opacity: 0;
+  text-shadow: 0 0 26px rgba(255,176,0,0.5), 0 2px 30px rgba(0,0,0,0.9);
+}
+#region-banner.show { animation: region 2.6s ease forwards; }
+@keyframes region {
+  0% { opacity: 0; transform: translateY(8px); letter-spacing: 0.62em; }
+  18% { opacity: 1; transform: none; letter-spacing: 0.4em; }
+  62% { opacity: 0.9; }
+  100% { opacity: 0; letter-spacing: 0.46em; }
+}
+
 .hidden { display: none !important; }

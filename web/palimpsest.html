@@ -139,6 +139,24 @@ body::after { /* drift haze: a cold film that thickens in the deep */
 /* the end screen, after the exit */
 #screen.ending h1 { font-size: clamp(22px,5vw,40px); letter-spacing: 0.18em; }
 
+/* region-crossing banner — a momentary title-card, centered, that announces a
+   new voice and then dissolves to reveal the passage. This is *place*, never a
+   compass: it tells you which book you've wandered into, nothing about the way out. */
+#region-banner {
+  position: fixed; top: 35%; left: 0; right: 0; z-index: 55;
+  text-align: center; pointer-events: none;
+  color: var(--amber); letter-spacing: 0.4em; text-transform: uppercase;
+  font-size: clamp(15px, 3vw, 21px); opacity: 0;
+  text-shadow: 0 0 26px rgba(255,176,0,0.5), 0 2px 30px rgba(0,0,0,0.9);
+}
+#region-banner.show { animation: region 2.6s ease forwards; }
+@keyframes region {
+  0% { opacity: 0; transform: translateY(8px); letter-spacing: 0.62em; }
+  18% { opacity: 1; transform: none; letter-spacing: 0.4em; }
+  62% { opacity: 0.9; }
+  100% { opacity: 0; letter-spacing: 0.46em; }
+}
+
 .hidden { display: none !important; }
 
 </style>
@@ -502,6 +520,28 @@ P.audio = (function () {
     src.connect(f); f.connect(g); g.connect(master); src.start(t);
   }
 
+  // Crossing into a different voice. A soft, low threshold swell — a perfect
+  // fifth that rises slightly into tune, like stepping through a doorway.
+  // Deliberately unlike the bright page-turn so the two never blur.
+  function crossing() {
+    if (!ctx || !enabled) return;
+    const t = ctx.currentTime;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.16, t + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0006, t + 1.0);
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900;
+    g.connect(f); f.connect(master);
+    const base = 98; // low G
+    [base, base * 1.5, base * 2].forEach((freq, i) => {
+      const o = ctx.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(freq * 0.985, t);
+      o.frequency.linearRampToValueAtTime(freq, t + 0.3);
+      const og = ctx.createGain(); og.gain.value = i === 0 ? 1 : i === 1 ? 0.45 : 0.22;
+      o.connect(og); og.connect(g); o.start(t); o.stop(t + 1.05);
+    });
+  }
+
   // The exit: fade everything to true silence.
   function silence() {
     if (!ctx) return;
@@ -509,7 +549,7 @@ P.audio = (function () {
     [noiseGain, droneGain, formantGain].forEach((g) => g && g.gain.setTargetAtTime(0, t, 0.8));
   }
 
-  return { setEnabled, setCoherence, pageTurn, silence, isEnabled: () => enabled, start: () => { if (enabled) ensure(); started = true; void started; } };
+  return { setEnabled, setCoherence, pageTurn, crossing, silence, isEnabled: () => enabled, start: () => { if (enabled) ensure(); started = true; void started; } };
 })();
 
 
@@ -536,6 +576,8 @@ P.engine = (function () {
     streakLow: 0,   // consecutive low-coherence rooms (fatigue)
     onChange: null,
     ended: false,
+    regionChanged: false, // did the last move cross from one voice into another?
+    enteredRegion: null,  // the themeLabel just entered (only when regionChanged)
   };
 
   function init(graph) {
@@ -559,6 +601,10 @@ P.engine = (function () {
     if (state.ended) return;
     const target = node(toId);
     if (!target) return;
+    // Crossing into a different source-voice is a sense of place worth marking.
+    const fromTheme = state.node ? state.node.theme : null;
+    state.regionChanged = fromTheme !== null && fromTheme !== target.theme;
+    state.enteredRegion = state.regionChanged ? target.themeLabel : null;
     state.node = target;
     state.run.pos = toId;
     state.run.visited[toId] = (state.run.visited[toId] || 0) + 1;
@@ -621,6 +667,8 @@ P.engine = (function () {
   return {
     init, current, node, move, newRun, drift, localCoherence, visitedCount,
     addNote, journal, noteWords,
+    regionChanged: () => state.regionChanged,
+    enteredRegion: () => state.enteredRegion,
     state,
     set onChange(fn) { state.onChange = fn; },
     isEnded: () => state.ended,
@@ -654,6 +702,13 @@ P.render = (function () {
     setVars();
     P.audio.setCoherence(P.engine.localCoherence());
 
+    // You just stepped from one voice into another — mark it so the change of
+    // place is felt, not missed.
+    if (n.kind !== 'exit' && P.engine.regionChanged()) {
+      showRegionBanner(P.engine.enteredRegion(), drift);
+      P.audio.crossing();
+    }
+
     renderStatus(n, drift);
 
     const reader = el('reader');
@@ -670,6 +725,17 @@ P.render = (function () {
 
     renderExits(n, drift, reader);
     reader.scrollTop = 0;
+  }
+
+  // A brief, centered announcement of the voice you've just entered. Drifts a
+  // little when you're lost, like everything else — but stays legible, because
+  // knowing *where* you are never tells you where the exit is. It's place, not
+  // a compass.
+  function showRegionBanner(label, drift) {
+    let banner = el('region-banner');
+    if (!banner) { banner = h('div', { id: 'region-banner' }); document.body.appendChild(banner); }
+    banner.textContent = '— ' + P.degrade.label(label || '', drift * 0.35, 'region') + ' —';
+    banner.classList.remove('show'); void banner.offsetWidth; banner.classList.add('show');
   }
 
   function renderStatus(n, drift) {

@@ -48,7 +48,7 @@ console.log('· start rendered');
 await page.evaluate(() => window.P.engine.addNote('the looking-glass room. three ways on. the warm one felt false.'));
 
 // walk the path, screenshotting the lowest-coherence room we hit
-let minCoh = 1, minShotTaken = false;
+let minCoh = 1, minShotTaken = false, crossingShot = false;
 for (let i = 1; i < path.length; i++) {
   const next = path[i];
   const idx = await page.evaluate((nextId) => {
@@ -59,6 +59,14 @@ for (let i = 1; i < path.length; i++) {
   if (idx < 0) throw new Error(`no exit from ${path[i - 1]} to ${next}`);
   await page.evaluate((k) => window.P.render.choose(k), idx);
   await page.waitForTimeout(20);
+  if (!crossingShot && await page.evaluate(() => window.P.engine.regionChanged())) {
+    await page.waitForTimeout(450); // let the banner animate to peak
+    const bannerText = await page.evaluate(() => { const b = document.getElementById('region-banner'); return b && getComputedStyle(b).opacity > 0.4 ? b.textContent : null; });
+    await page.screenshot({ path: 'test/shot-06-crossing.png' });
+    crossingShot = true;
+    console.log(`· region banner visible: ${JSON.stringify(bannerText)}`);
+    console.log(`· region crossing captured (entered "${await page.evaluate(() => window.P.engine.enteredRegion())}")`);
+  }
   const coh = await page.evaluate(() => window.P.engine.localCoherence());
   if (coh < 0.33 && !minShotTaken) {
     await page.screenshot({ path: 'test/shot-02-deep.png' });

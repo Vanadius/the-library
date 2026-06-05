@@ -89,6 +89,28 @@ P.audio = (function () {
     src.connect(f); f.connect(g); g.connect(master); src.start(t);
   }
 
+  // Crossing into a different voice. A soft, low threshold swell — a perfect
+  // fifth that rises slightly into tune, like stepping through a doorway.
+  // Deliberately unlike the bright page-turn so the two never blur.
+  function crossing() {
+    if (!ctx || !enabled) return;
+    const t = ctx.currentTime;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.16, t + 0.05);
+    g.gain.exponentialRampToValueAtTime(0.0006, t + 1.0);
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 900;
+    g.connect(f); f.connect(master);
+    const base = 98; // low G
+    [base, base * 1.5, base * 2].forEach((freq, i) => {
+      const o = ctx.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(freq * 0.985, t);
+      o.frequency.linearRampToValueAtTime(freq, t + 0.3);
+      const og = ctx.createGain(); og.gain.value = i === 0 ? 1 : i === 1 ? 0.45 : 0.22;
+      o.connect(og); og.connect(g); o.start(t); o.stop(t + 1.05);
+    });
+  }
+
   // The exit: fade everything to true silence.
   function silence() {
     if (!ctx) return;
@@ -96,5 +118,5 @@ P.audio = (function () {
     [noiseGain, droneGain, formantGain].forEach((g) => g && g.gain.setTargetAtTime(0, t, 0.8));
   }
 
-  return { setEnabled, setCoherence, pageTurn, silence, isEnabled: () => enabled, start: () => { if (enabled) ensure(); started = true; void started; } };
+  return { setEnabled, setCoherence, pageTurn, crossing, silence, isEnabled: () => enabled, start: () => { if (enabled) ensure(); started = true; void started; } };
 })();
