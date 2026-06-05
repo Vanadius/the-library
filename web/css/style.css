@@ -139,21 +139,30 @@ body::after { /* drift haze: a cold film that thickens in the deep */
 #screen.ending h1 { font-size: clamp(22px,5vw,40px); letter-spacing: 0.18em; }
 
 /* region-crossing banner — a momentary title-card, centered, that announces a
-   new voice and then dissolves to reveal the passage. This is *place*, never a
-   compass: it tells you which book you've wandered into, nothing about the way out. */
+   new voice and then dissolves. Opaque pill so it reads cleanly even when it
+   floats over the (amber) exit choices. It's *place*, never a compass: which
+   book you've wandered into, nothing about the way out. */
 #region-banner {
-  position: fixed; top: 35%; left: 0; right: 0; z-index: 55;
-  text-align: center; pointer-events: none;
-  color: var(--amber); letter-spacing: 0.4em; text-transform: uppercase;
-  font-size: clamp(15px, 3vw, 21px); opacity: 0;
-  text-shadow: 0 0 26px rgba(255,176,0,0.5), 0 2px 30px rgba(0,0,0,0.9);
+  position: fixed; top: 33%; left: 0; right: 0; z-index: 55;
+  display: flex; justify-content: center; pointer-events: none;
 }
-#region-banner.show { animation: region 2.6s ease forwards; }
+#region-banner .rb-inner {
+  opacity: 0;
+  background: rgba(7, 5, 3, 0.94);
+  border: 1px solid rgba(185, 127, 6, 0.55);
+  border-radius: 4px;
+  padding: 12px 30px 12px 36px;
+  color: var(--amber); letter-spacing: 0.4em; text-transform: uppercase;
+  font-size: clamp(14px, 2.6vw, 19px);
+  text-shadow: 0 0 18px rgba(255, 176, 0, 0.45);
+  box-shadow: 0 8px 44px rgba(0, 0, 0, 0.8), 0 0 26px rgba(255, 176, 0, 0.12);
+}
+#region-banner.show .rb-inner { animation: region 2.6s ease forwards; }
 @keyframes region {
-  0% { opacity: 0; transform: translateY(8px); letter-spacing: 0.62em; }
-  18% { opacity: 1; transform: none; letter-spacing: 0.4em; }
-  62% { opacity: 0.9; }
-  100% { opacity: 0; letter-spacing: 0.46em; }
+  0% { opacity: 0; transform: translateY(9px); }
+  16% { opacity: 1; transform: none; }
+  66% { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 .hidden { display: none !important; }

@@ -54,7 +54,8 @@ P.render = (function () {
   function showRegionBanner(label, drift) {
     let banner = el('region-banner');
     if (!banner) { banner = h('div', { id: 'region-banner' }); document.body.appendChild(banner); }
-    banner.textContent = '— ' + P.degrade.label(label || '', drift * 0.35, 'region') + ' —';
+    banner.innerHTML = '';
+    banner.appendChild(h('span', { class: 'rb-inner' }, '— ' + P.degrade.label(label || '', drift * 0.35, 'region') + ' —'));
     banner.classList.remove('show'); void banner.offsetWidth; banner.classList.add('show');
   }
 
