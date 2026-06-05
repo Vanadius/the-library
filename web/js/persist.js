@@ -48,6 +48,19 @@ P.persist = (function () {
     saveRun(run) { save(runKey(run.seed), run); },
     resetRun(seed) { const r = newRun(seed); save(runKey(seed), r); return r; },
 
+    // Forget everything: position, journal, AND cumulative knowledge. The
+    // compass re-locks; you arrive new. Clears every palimpsest.* key so it
+    // works no matter which world's seed you've played.
+    wipe() {
+      try {
+        for (let i = localStorage.length - 1; i >= 0; i--) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith('palimpsest.')) localStorage.removeItem(k);
+        }
+      } catch (e) {}
+      meta = defaultsMeta();
+    },
+
     // "The ear": a 0..1 sense of how attuned the player is, from cumulative
     // reading. Drives the compass unlock. Deliberately slow — attunement is earned.
     ear() {

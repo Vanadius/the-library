@@ -15,6 +15,13 @@ You move by reading. That is the only way to move.`;
     const graph = window.GRAPH;
     if (!graph) { document.body.innerHTML = '<p style="color:#ffb000;padding:40px">graph not found — run the build (npm run build).</p>'; return; }
 
+    // ?reset (or ?forget) wipes the save before anything loads — a bookmarkable
+    // clean slate that needs no console.
+    if (/[?&](reset|forget)\b/.test(location.search)) {
+      P.persist.wipe();
+      history.replaceState(null, '', location.pathname);
+    }
+
     P.engine.init(graph);
     P.engine.onChange = () => P.render.render();
 
@@ -41,6 +48,17 @@ You move by reading. That is the only way to move.`;
         ? h('div', { class: 'meta-line' }, `${meta.nodesRead} rooms read · ${meta.runs} ${meta.runs === 1 ? 'descent' : 'descents'}${meta.everFound ? ' · you have found it before' : ''}`)
         : h('div', { class: 'meta-line' }, 'press · then read'),
     );
+    // Reset, only offered once there's something to forget.
+    if (meta.nodesRead > 0 || P.engine.run().steps > 0) {
+      screen.append(h('button', { class: 'forget', onclick: forgetEverything }, 'forget everything'));
+    }
+  }
+
+  function forgetEverything() {
+    if (!confirm('Forget everything? This erases your position, your notes, and the reading you have done — the compass re-locks and you arrive new. This cannot be undone.')) return;
+    P.persist.wipe();
+    P.engine.newRun();
+    buildTitle(window.GRAPH);
   }
 
   function enter() {
