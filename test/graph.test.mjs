@@ -1,0 +1,87 @@
+// Graph invariants. These are the load-bearing guarantees the runtime relies on
+// and that make the world fair: the exit must be reachable, but never *through*
+// a mimic; mimics must truly dead-end; nothing may be orphaned; the coherence
+// gradient must actually span from noise to clarity.
+//
+// Runs against the committed web/data/graph.json (build it first with `npm run
+// build` if it's missing).
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+
+const graph = JSON.parse(await readFile(new URL('../web/data/graph.json', import.meta.url)));
+const N = graph.nodes;
+
+function bfs(start, blockKind) {
+  const seen = new Set([start]);
+  const q = [start];
+  while (q.length) {
+    const cur = q.shift();
+    for (const e of N[cur].exits) {
+      const t = N[e.to];
+      if (seen.has(e.to)) continue;
+      if (blockKind && t.kind === blockKind && t.id !== start) continue;
+      seen.add(e.to); q.push(e.to);
+    }
+  }
+  return seen;
+}
+
+test('graph loads with a start and an exit', () => {
+  assert.ok(graph.start && N[graph.start], 'start node exists');
+  assert.ok(graph.exit && N[graph.exit], 'exit node exists');
+  assert.equal(N[graph.exit].kind, 'exit');
+});
+
+test('every node is reachable from the start (no orphans)', () => {
+  const reached = bfs(graph.start);
+  assert.equal(reached.size, Object.keys(N).length, 'all nodes reachable');
+});
+
+test('the exit is reachable from the start', () => {
+  assert.ok(bfs(graph.start).has(graph.exit));
+});
+
+test('the exit is NOT reachable through any mimic (mimics are real dead ends)', () => {
+  assert.ok(bfs(graph.start, 'mimic').has(graph.exit),
+    'exit must be reachable without ever passing through a mimic');
+});
+
+test('all edges are bidirectional (you can always retreat)', () => {
+  for (const id in N) {
+    for (const e of N[id].exits) {
+      assert.ok(N[e.to].exits.some((b) => b.to === id), `edge ${id}->${e.to} has no return`);
+    }
+  }
+});
+
+test('every exit carries a preview snippet', () => {
+  for (const id in N) for (const e of N[id].exits) {
+    assert.ok(typeof e.preview === 'string' && e.preview.length > 0, `missing preview ${id}->${e.to}`);
+  }
+});
+
+test('coherence spans the full gradient from noise to clarity', () => {
+  const cohs = Object.values(N).map((n) => n.coherence);
+  assert.ok(Math.min(...cohs) < 0.25, 'there is genuine noise');
+  assert.ok(Math.max(...cohs) > 0.85, 'there is genuine clarity');
+  assert.equal(N[graph.exit].coherence, 1, 'the exit is maximally coherent');
+});
+
+test('the exit text is authored, not Markov', () => {
+  assert.ok(N[graph.exit].authored === true);
+  assert.ok(N[graph.exit].text.length > 400, 'exit is a substantial authored passage');
+});
+
+test('there are oases of multiple distinct themes', () => {
+  const oasisThemes = new Set(Object.values(N).filter((n) => n.kind === 'oasis').map((n) => n.theme));
+  assert.ok(oasisThemes.size >= 3, 'at least three distinct oasis voices');
+});
+
+test('mimics exist and form terminal clusters of high apparent coherence', () => {
+  const mimics = Object.values(N).filter((n) => n.kind === 'mimic');
+  assert.ok(mimics.length >= 3, 'mimics present');
+  const avg = mimics.reduce((s, n) => s + n.coherence, 0) / mimics.length;
+  assert.ok(avg > 0.6, 'mimics read as coherent (that is the trap)');
+});

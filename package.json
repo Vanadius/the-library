@@ -1,0 +1,17 @@
+{
+  "name": "palimpsest",
+  "version": "1.0.0",
+  "description": "A library of almost-meaning. A semantic-horror roguelike you read your way out of.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "fetch": "node pipeline/fetch_corpus.mjs",
+    "generate": "node --max-old-space-size=4096 pipeline/generate_graph.mjs",
+    "build": "node pipeline/build.mjs",
+    "test": "node --test test/*.test.mjs",
+    "playtest": "node test/playtest.mjs",
+    "serve": "node tools/serve.mjs"
+  },
+  "engines": { "node": ">=18" },
+  "license": "MIT"
+}

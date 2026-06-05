@@ -1,0 +1,11 @@
+# Corpus is downloaded + derived at build time (npm run build). Regenerable, and
+# large, so it's not committed. The PLAYABLE artifact (web/data/graph.*) IS
+# committed, so the game runs from a fresh clone with no build and no network.
+corpus/
+
+# Playtest output (the curated copies live in docs/screens/).
+test/shot-*.png
+
+node_modules/
+.DS_Store
+*.log

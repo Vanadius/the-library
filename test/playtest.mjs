@@ -1,0 +1,84 @@
+// Headless playtest: boots the real game in Chromium, walks start→exit, and
+// screenshots key beats. Fails loudly on any console/page error.
+import pw from '/opt/node22/lib/node_modules/playwright/index.js';
+const { chromium } = pw;
+import { readFile } from 'node:fs/promises';
+import { pathToFileURL } from 'node:url';
+
+const graph = JSON.parse(await readFile('web/data/graph.json', 'utf8'));
+
+// shortest path start -> exit
+function shortestPath() {
+  const prev = new Map([[graph.start, null]]);
+  const q = [graph.start];
+  while (q.length) {
+    const cur = q.shift();
+    if (cur === graph.exit) break;
+    for (const e of graph.nodes[cur].exits) if (!prev.has(e.to)) { prev.set(e.to, cur); q.push(e.to); }
+  }
+  const path = []; let c = graph.exit;
+  while (c != null) { path.unshift(c); c = prev.get(c); }
+  return path;
+}
+const path = shortestPath();
+console.log(`shortest start→exit: ${path.length} rooms`);
+
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 900, height: 760 } });
+const errors = [];
+page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
+
+await page.addInitScript(() => { try { localStorage.clear(); } catch (e) {} });
+await page.goto(pathToFileURL('web/index.html').href);
+try {
+  await page.waitForFunction(() => window.P && window.P.app && window.P.engine && window.GRAPH, { timeout: 8000 });
+} catch (e) {
+  console.error('boot failed. errors:\n' + errors.join('\n'));
+  await browser.close();
+  process.exit(1);
+}
+
+await page.click('#screen .enter');
+await page.waitForSelector('.passage');
+await page.screenshot({ path: 'test/shot-01-start.png' });
+console.log('· start rendered');
+
+// add a journal note to exercise that path
+await page.evaluate(() => window.P.engine.addNote('the looking-glass room. three ways on. the warm one felt false.'));
+
+// walk the path, screenshotting the lowest-coherence room we hit
+let minCoh = 1, minShotTaken = false;
+for (let i = 1; i < path.length; i++) {
+  const next = path[i];
+  const idx = await page.evaluate((nextId) => {
+    const n = window.P.engine.current();
+    const k = n.exits.findIndex((e) => e.to === nextId);
+    return k;
+  }, next);
+  if (idx < 0) throw new Error(`no exit from ${path[i - 1]} to ${next}`);
+  await page.evaluate((k) => window.P.render.choose(k), idx);
+  await page.waitForTimeout(20);
+  const coh = await page.evaluate(() => window.P.engine.localCoherence());
+  if (coh < 0.33 && !minShotTaken) {
+    await page.screenshot({ path: 'test/shot-02-deep.png' });
+    minShotTaken = true;
+    console.log(`· deep room captured (coherence ${coh.toFixed(2)}, drift ${(await page.evaluate(() => window.P.engine.drift())).toFixed(2)})`);
+  }
+  minCoh = Math.min(minCoh, coh);
+}
+
+// should now be at the exit
+const ended = await page.evaluate(() => window.P.engine.isEnded());
+await page.waitForSelector('.passage.authored');
+await page.screenshot({ path: 'test/shot-03-exit.png' });
+console.log(`· reached exit, ended=${ended}, min coherence en route=${minCoh.toFixed(2)}`);
+
+// open the journal to verify drift on notes renders
+await page.evaluate(() => window.P.app.openJournal());
+await page.waitForTimeout(30);
+await page.screenshot({ path: 'test/shot-04-journal.png' });
+
+await browser.close();
+if (errors.length) { console.error('CONSOLE/PAGE ERRORS:\n' + errors.join('\n')); process.exit(1); }
+console.log('playtest OK — no errors.');
