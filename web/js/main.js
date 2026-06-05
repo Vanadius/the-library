@@ -123,6 +123,8 @@ At the very bottom is the one page written for you. You will know it when you re
         'How the drift works: the longer you spend in rooms that mean nothing, the more lost you become — and your instruments stop telling the truth. Labels take strange accents, words go missing, your own notes rewrite themselves, and these marks fade. It lingers, and lifts only slowly when you find clearer rooms.'),
       h('p', { class: 'legend-note' },
         'One thing never drifts: the passage you are reading. The incoherence there is real — in the words themselves, never in the ink.'),
+      h('p', { class: 'legend-note' },
+        'And some pages, walked enough times, wear thin — and an older book shows through from beneath, a little more of it each time you return. That older writing is the one thing the noise cannot corrupt. The rooms you wear most are the ones you keep coming back to.'),
       h('p', { class: 'legend-note dim' },
         'None of these marks know where the door is. Only reading does.'),
       h('div', { class: 'jbtns' }, h('button', { onclick: closeKey }, 'close')),

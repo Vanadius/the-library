@@ -59,6 +59,7 @@ pipeline/                 build-time (Node, no deps)
   exit_text.mjs           THE authored passage, its decoys, and the behaviour-keyed endings — swappable
   descent_text.mjs        the authored "stairs down" (true) and their flattering fakes (false)
   fragments.mjs           authored sentences that bleed through the noise mid-descent
+  undertext.mjs           the older book buried beneath worn pages (the palimpsest, literal)
 
 web/                      runtime (plain HTML/CSS/JS, runs from file://)
   index.html

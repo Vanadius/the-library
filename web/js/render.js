@@ -9,6 +9,22 @@
 P.render = (function () {
   const { el, h, clamp } = P.core;
   let selIndex = 0;
+  const WEAR_REVEAL = 3; // visits before the surface first wears through
+  const WEAR_FULL = 6;   // visits to fully excavate the under-text
+
+  // Render the buried older book, excavated in proportion to how worn the page is.
+  function renderUnderText(n, wear, reader) {
+    const words = n.under.split(' ');
+    const frac = clamp((wear - (WEAR_REVEAL - 1)) / (WEAR_FULL - (WEAR_REVEAL - 1)));
+    const shown = Math.max(1, Math.floor(frac * words.length));
+    const block = h('div', { class: 'underpage' });
+    block.appendChild(h('div', { class: 'underpage-label' },
+      frac >= 1 ? 'the page is worn through; older writing beneath:' : 'the page is wearing thin; older writing shows beneath:'));
+    const text = h('div', { class: 'undertext' });
+    words.forEach((w, i) => text.appendChild(h('span', { class: i < shown ? 'u-shown' : 'u-hidden' }, w + ' ')));
+    block.appendChild(text);
+    reader.appendChild(block);
+  }
 
   function setVars() {
     const root = document.documentElement.style;
@@ -51,7 +67,14 @@ P.render = (function () {
     if (n.sanctuary) {
       reader.appendChild(h('div', { class: 'sanctuary-head' }, '✦  ' + n.themeLabel + '  ·  a sanctuary  ✦'));
     }
-    reader.appendChild(h('div', { class: 'passage' + (n.sanctuary ? ' sanctuary' : '') }, n.text));
+    const wear = P.engine.visitedCount(n.id);
+    const worn = n.under && wear >= WEAR_REVEAL;
+    reader.appendChild(h('div', { class: 'passage' + (n.sanctuary ? ' sanctuary' : '') + (worn ? ' worn' : '') }, n.text));
+
+    // PALIMPSEST, literal: walk a room enough and its surface wears thin, and an
+    // older authored book shows through from beneath — excavated word by word,
+    // and immune to the drift, because it is the one true thing in the room.
+    if (worn) renderUnderText(n, wear, reader);
 
     // A trace of someone who passed through.
     const ghost = P.ghosts.forNode(n);

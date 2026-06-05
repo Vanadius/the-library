@@ -78,6 +78,15 @@ body::after { /* drift haze: a cold film that thickens in the deep */
 }
 @keyframes settle { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
+/* A worn page: the generated surface thins, and the older book shows beneath.
+   The surface stays legible (the One Rule) — it only fades a little. */
+.passage.worn { opacity: 0.72; }
+.underpage { margin: 16px 0 4px; padding: 14px 0 4px; border-top: 1px dashed rgba(160,140,110,0.3); }
+.underpage-label { color: var(--amber-faint); font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; margin-bottom: 8px; }
+.undertext { color: #d9c7a4; font-style: italic; line-height: 1.7; text-shadow: 0 0 6px rgba(180,150,90,0.18); }
+.undertext .u-shown { color: #ecdcb4; }      /* excavated, legible — and drift never touches it */
+.undertext .u-hidden { color: #6a5c40; opacity: 0.5; }  /* still buried; wear the page more */
+
 .ghost { color: var(--amber-dim); font-style: italic; opacity: 0.62; font-size: 14px; margin: 18px 0 6px; }
 .ghost::before { content: "— "; }
 .ghost.falsestair { color: #c98f6a; opacity: 0.85; }

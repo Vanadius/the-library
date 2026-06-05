@@ -20,6 +20,7 @@ import { PROFILES, weightedProfile } from './lib/profiles.mjs';
 import { EXIT_TEXT, FALSE_EXITS, EXIT_CODAS } from './exit_text.mjs';
 import { FRAGMENTS } from './fragments.mjs';
 import { TRUE_DESCENTS, FALSE_DESCENTS } from './descent_text.mjs';
+import { UNDERTEXT } from './undertext.mjs';
 import { SEED, CORPUS, ORDERS, SCALE, PATHS } from './config.mjs';
 
 const DEDUP_L = 22; // reject Markov passages reproducing >= this many verbatim source tokens
@@ -270,6 +271,19 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
     node.bleed = true;
   }
 
+  // ---- 6c. The under-text: an older book buried beneath the noise ----------
+  // Walk a room enough times in the runtime and its generated surface wears thin
+  // and one of these authored fragments shows through — the palimpsest made into
+  // a mechanic. We bury one in a third of the noise rooms, deterministically;
+  // discovery is the player's, by attention to a place they keep returning to.
+  const underRand = rng(`${seed}:under`);
+  const underPool = [...b.nodes.values()].filter((n) => (n.kind === 'corridor' || n.kind === 'mimic') && !n.authored && !n.descent);
+  const unders = shuffle(underRand, UNDERTEXT);
+  let ui = 0;
+  for (const n of shuffle(underRand, underPool)) {
+    if (underRand() < 0.35) n.under = unders[ui++ % unders.length];
+  }
+
   // ---- 7. Previews (peer down each hall) ----------------------------------
   for (const n of b.nodes.values()) {
     for (const e of n.exits) {
@@ -291,6 +305,7 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
       oasisCount: [...b.nodes.values()].filter((n) => n.kind === 'oasis').length,
       themes: [...new Set([...b.nodes.values()].map((n) => n.themeLabel))],
       bleedCount: [...b.nodes.values()].filter((n) => n.bleed).length,
+      underCount: [...b.nodes.values()].filter((n) => n.under).length,
       stats: report.stats,
       codas: EXIT_CODAS, // behavior-keyed endings, read by the runtime
     },
@@ -302,6 +317,7 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
       perplexity: Math.round(n.perplexity * 10) / 10,
       profile: n.profile, authored: n.authored || undefined,
       bleed: n.bleed || undefined,
+      under: n.under || undefined,
       stratum: n.stratum ?? 0,
       sanctuary: n.sanctuary || undefined,
       entry: n.entry || undefined,

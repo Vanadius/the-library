@@ -123,6 +123,16 @@ test('authored fragments bleed through into some rooms', () => {
   assert.equal(graph.meta.bleedCount, bled.length);
 });
 
+test('an older book is buried beneath worn pages (under-text)', () => {
+  const buried = Object.values(N).filter((n) => n.under);
+  assert.ok(buried.length >= 20, 'many rooms hide an under-text');
+  assert.equal(graph.meta.underCount, buried.length);
+  for (const n of buried) {
+    assert.ok(n.kind === 'corridor' || n.kind === 'mimic', 'under-text only beneath the noise rooms');
+    assert.ok(typeof n.under === 'string' && n.under.length > 20);
+  }
+});
+
 test('behavior-keyed endings are baked into the graph meta', () => {
   const codas = graph.meta.codas || {};
   assert.ok(Object.keys(codas).length >= 4, 'multiple endings exist');

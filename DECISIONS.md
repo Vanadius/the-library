@@ -279,3 +279,30 @@ Implementation notes:
 Cut along the way (playtester's call, and right): a "which passage is more meant?"
 calibration mini-game — a correctness buzzer would betray the game's stance that
 you cannot verify your sense of meaning from the inside.
+
+---
+
+## Wear & the under-text (Derek's idea — the title, made into a mechanic)
+
+A palimpsest is a page scraped and overwritten, the older hand showing through.
+So: walk a room enough times and its generated surface *wears thin*, and an
+older, authored book shows through from beneath — excavated word by word across
+visits (`pipeline/undertext.mjs`, ~1/3 of the noise rooms, deterministic).
+
+Why it belongs:
+- It is the title enacted. The premise was always "one true book overwritten";
+  now you can physically rub the noise away and read scraps of it.
+- It is **non-navigational** — the buried text never says where the stair is — so
+  it can't be farmed for advantage. It only rewards tenderness toward a place you
+  keep returning to, and gives more authored texture to sharpen recognition.
+- It turns the thing the playtester disliked — backtracking, loops — into
+  *excavation*. The rooms you wear most are the junctions you keep passing while
+  lost, so the buried truth surfaces exactly where you struggled.
+- The under-text is the one thing the drift cannot corrupt: the surface and the
+  HUD decay, but the older writing beneath reads true and clear. The room you read
+  stays legible throughout (the One Rule holds) — the surface only fades; the
+  under-text is crisp.
+
+Reveal is gradual (first show at 3 visits, fully excavated by 6). The fragments
+read like scraps of one lost narrative, so an attentive player half-assembles a
+story that is never given in order.
