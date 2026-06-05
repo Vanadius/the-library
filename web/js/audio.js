@@ -158,6 +158,28 @@ P.audio = (function () {
     });
   }
 
+  // Descending a stratum: a longer, lower swell that glides downward and settles
+  // — the floor opening, the drop, the new ground.
+  function descend() {
+    if (!ctx || !enabled) return;
+    const t = ctx.currentTime;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.2, t + 0.08);
+    g.gain.exponentialRampToValueAtTime(0.0005, t + 1.8);
+    const f = ctx.createBiquadFilter(); f.type = 'lowpass';
+    f.frequency.setValueAtTime(1200, t); f.frequency.exponentialRampToValueAtTime(220, t + 1.6);
+    g.connect(f); f.connect(master);
+    const root = (palette.root || 49);
+    [root * 2, root * 3, root * 4].forEach((freq, i) => {
+      const o = ctx.createOscillator(); o.type = 'sine';
+      o.frequency.setValueAtTime(freq, t);
+      o.frequency.exponentialRampToValueAtTime(freq * 0.5, t + 1.5); // glide down an octave
+      const og = ctx.createGain(); og.gain.value = i === 0 ? 1 : i === 1 ? 0.4 : 0.2;
+      o.connect(og); og.connect(g); o.start(t); o.stop(t + 1.85);
+    });
+  }
+
   // The exit: fade everything to true silence.
   function silence() {
     if (!ctx) return;
@@ -165,5 +187,5 @@ P.audio = (function () {
     [noiseGain, droneGain, formantGain].forEach((g) => g && g.gain.setTargetAtTime(0, t, 0.8));
   }
 
-  return { setEnabled, setCoherence, setZone, pageTurn, crossing, silence, isEnabled: () => enabled, start: () => { if (enabled) ensure(); started = true; void started; } };
+  return { setEnabled, setCoherence, setZone, pageTurn, crossing, descend, silence, isEnabled: () => enabled, start: () => { if (enabled) ensure(); started = true; void started; } };
 })();

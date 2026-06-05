@@ -19,6 +19,7 @@ import { ReferenceModel } from './lib/reference_model.mjs';
 import { PROFILES, weightedProfile } from './lib/profiles.mjs';
 import { EXIT_TEXT, FALSE_EXITS, EXIT_CODAS } from './exit_text.mjs';
 import { FRAGMENTS } from './fragments.mjs';
+import { TRUE_DESCENTS, FALSE_DESCENTS } from './descent_text.mjs';
 import { SEED, CORPUS, ORDERS, SCALE, PATHS } from './config.mjs';
 
 const DEDUP_L = 22; // reject Markov passages reproducing >= this many verbatim source tokens
@@ -97,103 +98,132 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
     return b.add({ kind, theme, themeLabel: themeLabel(theme), order, perplexity, surprisal, text, authored: true });
   };
 
-  // ---- 1. Oases ----------------------------------------------------------
-  const oasisThemes = shuffle(b.rand, themeKeys);
-  const oases = [];
-  for (let i = 0; i < cfg.oases; i++) {
-    const theme = oasisThemes[i % oasisThemes.length];
-    // small islands are the norm; the occasional larger archipelago
-    const size = b.rand() < 0.6 ? randInt(b.rand, 1, 2) : randInt(b.rand, 3, 6);
-    const ids = [];
-    for (let k = 0; k < size; k++) {
-      const order = pick(b.rand, ORDERS.oasis); // 7 or 8 — coherent but not verbatim
-      ids.push(gen(theme, order, 'oasis', randInt(b.rand, 70, 110), `oasis${i}-${k}`));
-    }
-    // interconnect island nodes in a ring so the player can wander an oasis
-    for (let k = 0; k < ids.length; k++) b.link(ids[k], ids[(k + 1) % ids.length]);
-    oases.push({ theme, ids, entry: ids[0] });
-  }
+  // ---- Topology: THE DESCENT ---------------------------------------------
+  // A stack of strata. Each is a small bounded world with a sanctuary oasis, a
+  // maze of corridors, a mimic or two, exactly one TRUE stair down (an authored
+  // passage you recognize by reading), and a fake stair or two. You descend by
+  // finding the true stair; the deepest stratum's stair is the exit itself.
+  const S = cfg.strata;
+  const themes = shuffle(b.rand, themeKeys);
 
-  const startNode = oases[0].entry;
-  b.nodes.get(startNode).kind = 'oasis';
-
-  // ---- 2. Spine: connect every oasis (random spanning tree + a few loops) --
-  const corridorBetween = (aId, bId, theme, profileName, lenRange = [cfg.corridorMin, cfg.corridorMax]) => {
+  // A corridor of `len` rooms from aId, optionally to bId, tagged into a stratum.
+  // Returns every room it created so the caller can grow a bounded region.
+  const corridor = (aId, bId, theme, stratum, profileName, lenRange = [cfg.corridorMin, cfg.corridorMax]) => {
     const len = randInt(b.rand, lenRange[0], lenRange[1]);
     const profile = profileName ?? weightedProfile(b.rand);
     const orders = PROFILES[profile](b.rand, len, {});
+    const ids = [];
     let prev = aId;
-    let firstMid = null;
     for (let i = 0; i < len; i++) {
-      const c = gen(theme, orders[i], 'corridor', randInt(b.rand, 42, 72), `cor-${aId}-${bId}-${i}-${b.seq}`);
+      const c = gen(theme, orders[i], 'corridor', randInt(b.rand, 42, 72), `s${stratum}-cor-${b.seq}`);
       b.nodes.get(c).profile = profile;
-      b.link(prev, c);
-      prev = c;
-      if (i === 0) firstMid = c;
+      b.nodes.get(c).stratum = stratum;
+      b.link(prev, c); prev = c; ids.push(c);
     }
     if (bId) b.link(prev, bId);
-    return { head: firstMid, tail: prev, len };
+    return { tail: prev, ids };
   };
 
-  for (let i = 1; i < oases.length; i++) {
-    const j = randInt(b.rand, 0, i - 1); // connect to an earlier oasis
-    corridorBetween(oases[i].entry, oases[j].entry, oases[i].theme);
-  }
-  // extra loops for genuine choice (multiple ways between regions)
-  const extraLoops = Math.ceil(oases.length * 0.5);
-  for (let i = 0; i < extraLoops; i++) {
-    const a = pick(b.rand, oases), c = pick(b.rand, oases);
-    if (a !== c) corridorBetween(a.entry, c.entry, a.theme);
-  }
+  const strata = [];
+  for (let s = 0; s < S; s++) {
+    const theme = themes[s % themes.length];
+    const last = s === S - 1;
 
-  // ---- 3. Maze growth: sprawl until we hit the node target ----------------
-  // Most of the library is hall. We sprout corridors off existing nodes; some
-  // loop back (more routes), most are spurs (lost halls that go nowhere).
-  const allIds = () => [...b.nodes.keys()];
-  let guard = 0;
-  while (b.nodes.size < cfg.nodesTarget && guard++ < cfg.nodesTarget * 3) {
-    const anchorId = pick(b.rand, allIds());
-    const anchor = b.nodes.get(anchorId);
-    if (anchor.kind === 'exit' || anchor.kind === 'mimic') continue;
-    const theme = anchor.theme;
-    const loop = b.rand() < 0.35;
-    const dest = loop ? pick(b.rand, oases).entry : null;
-    corridorBetween(anchorId, dest, theme, undefined, [2, cfg.corridorMax]);
-  }
+    // The sanctuary you arrive in: a coherent oasis, the layer's landmark.
+    const entry = gen(theme, pick(b.rand, ORDERS.oasis), 'oasis', randInt(b.rand, 80, 120), `s${s}-entry`);
+    const en = b.nodes.get(entry); en.stratum = s; en.sanctuary = true; en.entry = true;
+    const region = [entry];
 
-  // ---- 4. Mimics: beautiful dead ends ------------------------------------
-  // Approach via false_summit/cliff (reads like you're nearing an oasis), then a
-  // cluster of high-order nodes that connects to NOTHING onward. A few summits
-  // carry an authored-feeling decoy to bait recognition of the real exit.
-  const cleanIds = () => allIds().filter((id) => {
-    const k = b.nodes.get(id).kind; return k === 'corridor' || k === 'oasis';
-  });
-  for (let m = 0; m < cfg.mimics; m++) {
-    const anchorId = pick(b.rand, cleanIds());
-    const theme = b.nodes.get(anchorId).theme;
-    const approach = corridorBetween(anchorId, null, theme, b.rand() < 0.6 ? 'false_summit' : 'cliff', [3, 6]);
-    // terminal cluster
-    const size = randInt(b.rand, 2, 5);
-    const cluster = [];
-    for (let k = 0; k < size; k++) cluster.push(gen(theme, pick(b.rand, [7, 8]), 'mimic', randInt(b.rand, 60, 100), `mimic${m}-${k}`));
-    for (let k = 0; k < cluster.length; k++) b.link(cluster[k], cluster[(k + 1) % cluster.length]);
-    b.link(approach.tail, cluster[0]);
-    // bait: a subset of mimics get an authored decoy at their summit
-    if (m < FALSE_EXITS.length) {
-      const decoy = authored(FALSE_EXITS[m], 'mimic', theme, 8);
-      b.link(cluster[cluster.length - 1], decoy);
+    // Maybe a second oasis deeper in the layer.
+    if (b.rand() < cfg.extraOasis) {
+      const o2 = gen(theme, pick(b.rand, ORDERS.oasis), 'oasis', randInt(b.rand, 70, 110), `s${s}-o2`);
+      b.nodes.get(o2).stratum = s; b.nodes.get(o2).sanctuary = true;
+      corridor(entry, o2, theme, s).ids.forEach((id) => region.push(id));
+      region.push(o2);
     }
+
+    // Grow a bounded maze inside the stratum.
+    let guard = 0;
+    const target = cfg.roomsPerStratum;
+    while (region.length < target && guard++ < target * 5) {
+      const anchorId = pick(b.rand, region);
+      const ak = b.nodes.get(anchorId).kind;
+      if (ak !== 'corridor' && ak !== 'oasis') continue;
+      const loop = b.rand() < 0.3;
+      const dest = loop ? pick(b.rand, region) : null;
+      corridor(anchorId, dest, theme, s, undefined, [2, cfg.corridorMax]).ids.forEach((id) => region.push(id));
+    }
+
+    // Mimics: beautiful dead ends inside the layer.
+    const corridorsOf = () => region.filter((id) => b.nodes.get(id).kind === 'corridor');
+    const nMimics = randInt(b.rand, cfg.mimicsPerStratum[0], cfg.mimicsPerStratum[1]);
+    for (let m = 0; m < nMimics; m++) {
+      const base = corridorsOf(); if (!base.length) break;
+      const anchorId = pick(b.rand, base);
+      const approach = corridor(anchorId, null, theme, s, b.rand() < 0.6 ? 'false_summit' : 'cliff', [2, 5]);
+      const size = randInt(b.rand, 2, 4);
+      const cluster = [];
+      for (let k = 0; k < size; k++) { const c = gen(theme, pick(b.rand, [7, 8]), 'mimic', randInt(b.rand, 60, 100), `s${s}-mim${m}-${k}`); b.nodes.get(c).stratum = s; cluster.push(c); }
+      for (let k = 0; k < cluster.length; k++) b.link(cluster[k], cluster[(k + 1) % cluster.length]);
+      b.link(approach.tail, cluster[0]);
+    }
+
+    // The TRUE stair down — authored, embedded at a moderate distance from the
+    // sanctuary: far enough to require reading your way to it, near enough that a
+    // floor is a brisk search and not a slog.
+    const distFromEntry = bfsDistances(b, entry);
+    const corr = corridorsOf().filter((id) => distFromEntry.has(id)).sort((a, c) => (distFromEntry.get(a) ?? 0) - (distFromEntry.get(c) ?? 0));
+    const far = corr.length ? corr[Math.floor(corr.length * 0.6)] : entry;
+    const trueText = last ? EXIT_TEXT : TRUE_DESCENTS[s % TRUE_DESCENTS.length];
+    const stair = authored(trueText, last ? 'exit' : 'descent', theme, 9);
+    const st = b.nodes.get(stair); st.stratum = s; if (last) st.coherenceOverride = 1.0; else st.descent = 'down';
+    corridor(far, stair, theme, s, 'steady_decline', [2, 4]);
+
+    // FALSE stairs — authored fakes that offer "down" and drop you into a dead
+    // end. They make the recognition a reading, not a reflex.
+    if (!last) {
+      const nFalse = randInt(b.rand, cfg.falseDescents[0], cfg.falseDescents[1]);
+      for (let f = 0; f < nFalse; f++) {
+        const base = corridorsOf(); if (!base.length) break;
+        const anchorId = pick(b.rand, base);
+        const approach = corridor(anchorId, null, theme, s, 'false_summit', [2, 4]);
+        const fakeText = FALSE_DESCENTS[(s + f) % FALSE_DESCENTS.length];
+        const fake = authored(fakeText, 'mimic', theme, 8);
+        const fn = b.nodes.get(fake); fn.stratum = s; fn.descent = 'false';
+        b.link(approach.tail, fake);
+        // taking its "stair" drops into a small dead end you must climb back from
+        const trap = gen(theme, pick(b.rand, [6, 7]), 'mimic', randInt(b.rand, 50, 80), `s${s}-trap${f}`);
+        b.nodes.get(trap).stratum = s;
+        b.link(fake, trap);
+        fn.down = trap;
+      }
+    }
+
+    // On the deepest floor, where the real exit hides, plant authored decoys —
+    // beautiful fakes that read as meant but are dead ends — so the final
+    // recognition stays an earned act of discrimination, not "click the one nice
+    // paragraph."
+    if (last) {
+      const nDecoys = Math.min(2, FALSE_EXITS.length);
+      for (let d = 0; d < nDecoys; d++) {
+        const base = corridorsOf(); if (!base.length) break;
+        const anchorId = pick(b.rand, base);
+        const approach = corridor(anchorId, null, theme, s, 'false_summit', [2, 4]);
+        const decoy = authored(FALSE_EXITS[d], 'mimic', theme, 8);
+        b.nodes.get(decoy).stratum = s;
+        b.link(approach.tail, decoy);
+      }
+    }
+
+    strata.push({ entry, stair, theme, last });
   }
 
-  // ---- 5. The exit: beyond the farthest oasis, through the worst noise -----
-  const dist = bfsDistances(b, startNode);
-  let far = oases[0], best = -1;
-  for (const o of oases) { const d = dist.get(o.entry) ?? -1; if (d > best) { best = d; far = o; } }
-  // a plunge into salad, then breakthrough
-  const plunge = corridorBetween(far.entry, null, far.theme, 'cliff', [4, 6]);
-  const exitId = authored(EXIT_TEXT, 'exit', far.theme, 9);
-  b.nodes.get(exitId).coherenceOverride = 1.0;
-  b.link(plunge.tail, exitId);
+  // Chain the strata: each true stair descends to the next sanctuary.
+  for (let s = 0; s < S - 1; s++) b.nodes.get(strata[s].stair).down = strata[s + 1].entry;
+
+  const startNode = strata[0].entry;
+  b.nodes.get(startNode).kind = 'oasis';
+  const exitId = strata[S - 1].stair;
 
   // ---- 6. Coherence normalization ----------------------------------------
   // Primary signal: assigned Markov order (the design's ground truth). Secondary:
@@ -218,11 +248,11 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
   // weighted to mid-depth and ignores whether a room leads anywhere — following
   // the meaning must remain a trap, not a strategy. (docs/NEXT_MOVEMENTS.md §1)
   const bleedRand = rng(`${seed}:bleed`);
-  const maxDist = Math.max(...[...dist.values()]);
   let bleedPool = [...b.nodes.values()].filter((n) => {
+    if (n.authored || n.descent) return false;            // never deface a real passage
     if (n.kind !== 'corridor' && n.kind !== 'mimic') return false;
-    const d = dist.get(n.id) ?? 0;
-    return d >= maxDist * 0.18 && d <= maxDist * 0.85; // mid-depth band
+    const s = n.stratum ?? 0;
+    return s >= S * 0.15 && s <= S * 0.85;                // mid-depth strata
   });
   bleedPool = shuffle(bleedRand, bleedPool);
   const bleedCount = Math.max(8, Math.round(b.nodes.size * 0.04));
@@ -257,7 +287,8 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
       seed, scale,
       generatedAt: new Date().toISOString(),
       nodeCount: b.nodes.size,
-      oasisCount: oases.length,
+      strata: S,
+      oasisCount: [...b.nodes.values()].filter((n) => n.kind === 'oasis').length,
       themes: [...new Set([...b.nodes.values()].map((n) => n.themeLabel))],
       bleedCount: [...b.nodes.values()].filter((n) => n.bleed).length,
       stats: report.stats,
@@ -271,6 +302,11 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
       perplexity: Math.round(n.perplexity * 10) / 10,
       profile: n.profile, authored: n.authored || undefined,
       bleed: n.bleed || undefined,
+      stratum: n.stratum ?? 0,
+      sanctuary: n.sanctuary || undefined,
+      entry: n.entry || undefined,
+      descent: n.descent || undefined,
+      down: n.down || undefined,
       text: n.text,
       exits: n.exits.map((e) => ({ to: e.to, preview: e.preview })),
     }])),
@@ -290,20 +326,51 @@ function bfsDistances(b, start) {
   return dist;
 }
 
-// Reconstruct an actual shortest path (not just a reachability bit) so we can
-// exhibit a concrete solution and re-check every edge along it.
+// Navigation neighbours: the hallways you can walk (bidirectional exits) PLUS
+// the one-way stair down from a true descent. Solvability has to reason over the
+// same graph the player actually traverses.
+function navOut(node) {
+  const out = node.exits.map((e) => e.to);
+  if (node.descent === 'down' && node.down) out.push(node.down);
+  return out;
+}
+
+function bfsNav(b, start) {
+  const dist = new Map([[start, 0]]);
+  const q = [start];
+  while (q.length) {
+    const cur = q.shift();
+    for (const to of navOut(b.nodes.get(cur))) if (!dist.has(to)) { dist.set(to, dist.get(cur) + 1); q.push(to); }
+  }
+  return dist;
+}
+
+// Reconstruct an actual shortest path over the navigation graph so we can
+// exhibit a concrete solution and re-check every edge (hallway or stair) on it.
 function shortestPath(b, start, goal) {
   const prev = new Map([[start, null]]);
   const q = [start];
   while (q.length) {
     const cur = q.shift();
     if (cur === goal) break;
-    for (const e of b.nodes.get(cur).exits) if (!prev.has(e.to)) { prev.set(e.to, cur); q.push(e.to); }
+    for (const to of navOut(b.nodes.get(cur))) if (!prev.has(to)) { prev.set(to, cur); q.push(to); }
   }
   if (!prev.has(goal)) return null;
   const path = []; let c = goal;
   while (c != null) { path.unshift(c); c = prev.get(c); }
   return path;
+}
+
+// Rooms that can REACH the goal: reverse-BFS over the navigation graph.
+function reverseReach(b, goal) {
+  const rev = new Map();
+  for (const n of b.nodes.values()) for (const to of navOut(n)) {
+    if (!rev.has(to)) rev.set(to, []);
+    rev.get(to).push(n.id);
+  }
+  const seen = new Set([goal]); const q = [goal];
+  while (q.length) { const cur = q.shift(); for (const p of (rev.get(cur) || [])) if (!seen.has(p)) { seen.add(p); q.push(p); } }
+  return seen;
 }
 
 // Prove the world is solvable — and fail the build loudly if it is not, so a
@@ -315,23 +382,25 @@ export function validate(b, start, exit) {
   const N = b.nodes.size;
   if (b.nodes.get(exit)?.kind !== 'exit') throw new Error('INVARIANT VIOLATED: exit node missing/mistyped');
 
-  // 1. a concrete start→exit solution, with every edge on it re-verified
+  // 1. a concrete start→exit solution (descending through the strata), with
+  // every edge on it re-verified as a real hallway or a real stair
   const path = shortestPath(b, start, exit);
   if (!path) throw new Error('UNSOLVABLE: no path from start to exit');
   for (let i = 1; i < path.length; i++) {
-    if (!b.nodes.get(path[i - 1]).exits.some((e) => e.to === path[i])) {
-      throw new Error('UNSOLVABLE: reconstructed solution path has a broken edge');
-    }
+    const u = b.nodes.get(path[i - 1]);
+    const ok = u.exits.some((e) => e.to === path[i]) || (u.descent === 'down' && u.down === path[i]);
+    if (!ok) throw new Error('UNSOLVABLE: reconstructed solution path has a broken edge');
   }
 
-  // 2. no orphans — the whole library is a single connected world
-  const fromStart = bfsDistances(b, start);
+  // 2. no orphans — every room is reachable from the start
+  const fromStart = bfsNav(b, start);
   const orphan = N - fromStart.size;
   if (orphan > 0) throw new Error(`INVARIANT VIOLATED: ${orphan} orphan room(s) unreachable from start`);
 
   // 3. solvable from ANYWHERE — every room can still reach the exit (no soft-lock).
-  // Edges are bidirectional, so rooms-that-can-reach-the-exit == BFS from exit.
-  const canReach = bfsDistances(b, exit);
+  // Within a stratum you can always backtrack; descents carry you on. Reverse-BFS
+  // over the navigation graph proves it.
+  const canReach = reverseReach(b, exit);
   if (canReach.size !== N) throw new Error(`INVARIANT VIOLATED: ${N - canReach.size} room(s) cannot reach the exit (soft-lock)`);
 
   // 4. the false-coherence trap holds: the exit is reachable without ever
@@ -359,10 +428,10 @@ function reachableAvoiding(b, start, avoid) {
   const q = [start];
   while (q.length) {
     const cur = q.shift();
-    for (const e of b.nodes.get(cur).exits) {
-      const t = b.nodes.get(e.to);
-      if (seen.has(e.to) || (avoid(t) && t.id !== start)) continue;
-      seen.add(e.to); q.push(e.to);
+    for (const to of navOut(b.nodes.get(cur))) {
+      const t = b.nodes.get(to);
+      if (seen.has(to) || (avoid(t) && t.id !== start)) continue;
+      seen.add(to); q.push(to);
     }
   }
   return seen;

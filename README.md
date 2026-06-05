@@ -2,16 +2,19 @@
 
 *A library of almost-meaning. A semantic-horror roguelike you read your way out of.*
 
-You wake inside an endless library. On every shelf are books, and in every book
-are words, and almost none of the words mean anything — they're statistically
-plausible nothing, assembled by Markov chains, holding together for a line or a
-paragraph before they forget what they were about. You move by **reading**:
-choosing which hallway to walk by judging which passage means something and which
-only sounds like it does. Coherence is your compass, and coherence lies.
+You wake inside a library that only goes **down**. On every shelf are books, and
+in every book are words, and almost none of the words mean anything — they're
+statistically plausible nothing, assembled by Markov chains, holding together for
+a line before they forget what they were about. You move by **reading**.
 
-Somewhere in here, one passage was written by a person, on purpose, for you.
-You're never told what it looks like. After hours of swimming in sophisticated
-mimicry, you're meant to **feel** the difference. That's the exit.
+The library is a stack of floors. On each floor, hidden among the rooms that mean
+nothing, is **one passage someone *meant*** — and it is a stair down. Find it by
+reading, recognize it among the flattering fakes, and descend. Each floor begins
+in a **sanctuary** where the noise clears and you can rest.
+
+At the very bottom is the one page written, by a person, for you. You're never
+told what it looks like. After all that mimicry, you're meant to **feel** the
+difference. That's the exit.
 
 It's a playable version of the hard problem of consciousness: you do exactly what
 a language model does — predict whether the next passage is real — and you can't
@@ -52,8 +55,10 @@ pipeline/                 build-time (Node, no deps)
   lib/markov.mjs          variable-order word-level Markov chains (the terrain)
   lib/reference_model.mjs backoff n-gram LM — the coherence/perplexity oracle
   lib/profiles.mjs        path order-profiles: decline, cliff, oscillator, false summit, shortcut
-  generate_graph.mjs      places oases, corridors, mimics, the exit; scores; validates; serializes
-  exit_text.mjs           THE authored passage (and its decoys) — swappable
+  generate_graph.mjs      builds the Descent: strata, sanctuaries, stairs, mimics; scores; validates; serializes
+  exit_text.mjs           THE authored passage, its decoys, and the behaviour-keyed endings — swappable
+  descent_text.mjs        the authored "stairs down" (true) and their flattering fakes (false)
+  fragments.mjs           authored sentences that bleed through the noise mid-descent
 
 web/                      runtime (plain HTML/CSS/JS, runs from file://)
   index.html

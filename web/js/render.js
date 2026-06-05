@@ -20,12 +20,17 @@ P.render = (function () {
     const n = P.engine.current();
     const drift = P.engine.drift();
     setVars();
+    document.body.classList.toggle('in-sanctuary', !!n.sanctuary && n.kind !== 'exit');
     P.audio.setZone(n.theme);
     P.audio.setCoherence(P.engine.localCoherence());
 
-    // You just stepped from one voice into another — mark it so the change of
-    // place is felt, not missed.
-    if (n.kind !== 'exit' && P.engine.regionChanged()) {
+    // A descent outranks a voice-crossing as the thing to announce.
+    const descended = P.engine.justDescended();
+    if (descended != null) {
+      showDescentBanner(descended);
+      if (P.audio.descend) P.audio.descend();
+      P.engine.clearDescended();
+    } else if (n.kind !== 'exit' && P.engine.regionChanged()) {
       showRegionBanner(P.engine.enteredRegion(), drift);
       P.audio.crossing();
     }
@@ -37,20 +42,48 @@ P.render = (function () {
 
     if (n.kind === 'exit') { renderExit(n, reader); return; }
 
-    // The room.
-    reader.appendChild(h('div', { class: 'passage' }, n.text));
+    // A stair that just gave way under you.
+    if (P.engine.falseStairTaken()) {
+      reader.appendChild(h('div', { class: 'ghost falsestair' }, 'the stair gives way beneath the words. it was never a way down. climb back, and keep reading.'));
+    }
+
+    // The room. Sanctuaries get a quiet masthead — an unmistakable landmark.
+    if (n.sanctuary) {
+      reader.appendChild(h('div', { class: 'sanctuary-head' }, '✦  ' + n.themeLabel + '  ·  a sanctuary  ✦'));
+    }
+    reader.appendChild(h('div', { class: 'passage' + (n.sanctuary ? ' sanctuary' : '') }, n.text));
 
     // A trace of someone who passed through.
     const ghost = P.ghosts.forNode(n);
     if (ghost) reader.appendChild(h('div', { class: 'ghost' }, P.degrade.label(ghost, drift * 0.5, n.id + 'g')));
 
-    // Evidence that you are not the only thing reading in here — only on return,
-    // bolder in the deep. Never a navigational tell.
     const presence = P.engine.presenceMark(n);
     if (presence) reader.appendChild(h('div', { class: 'ghost presence' }, P.degrade.label(presence, drift * 0.4, n.id + 'pr')));
 
+    // The stair down, if this room offers one. It looks the same whether true or
+    // false: only the passage tells you which, and only if you read it.
+    if (n.descent) {
+      reader.appendChild(h('div', { class: 'descend-control' }, [
+        h('button', { class: 'descend', onclick: () => P.engine.descend() }, '↓  take the stair down'),
+      ]));
+    }
+
     renderExits(n, drift, reader);
     reader.scrollTop = 0;
+  }
+
+  // The descent event: a held, weighty announcement of the floor you've reached.
+  function showDescentBanner(stratumIdx) {
+    let banner = el('region-banner');
+    if (!banner) { banner = h('div', { id: 'region-banner' }); document.body.appendChild(banner); }
+    const depth = stratumIdx + 1, total = P.engine.totalStrata();
+    banner.innerHTML = '';
+    banner.appendChild(h('span', { class: 'rb-inner descend-banner' }, '↓  you descend  ·  stratum ' + roman(depth) + ' of ' + roman(total)));
+    banner.classList.remove('show'); void banner.offsetWidth; banner.classList.add('show');
+  }
+  function roman(n) {
+    const map = [[10, 'X'], [9, 'IX'], [5, 'V'], [4, 'IV'], [1, 'I']];
+    let out = ''; for (const [v, s] of map) while (n >= v) { out += s; n -= v; } return out || 'I';
   }
 
   // A brief, centered announcement of the voice you've just entered. Drifts a
@@ -67,13 +100,15 @@ P.render = (function () {
 
   function renderStatus(n, drift) {
     const loc = P.degrade.label(n.themeLabel, drift, n.id + 'loc');
-    const meta = P.persist.meta();
+    const depth = P.engine.stratum() + 1, total = P.engine.totalStrata();
     el('status').innerHTML = '';
     el('status').append(
-      h('div', { class: 'loc' }, P.degrade.label('— ' + loc + ' —', drift * 0.7, n.id + 'l2')),
-      h('div', { class: 'right' }, [
-        h('span', null, P.degrade.label(P.engine.run().steps + ' pages turned', drift * 0.4, 'pg')),
+      h('div', { class: 'loc' }, [
+        h('span', { class: 'depth' }, 'stratum ' + roman(depth) + ' / ' + roman(total)),
+        h('span', { class: 'locname' }, P.degrade.label(' · ' + loc, drift * 0.7, n.id + 'l2')),
       ]),
+      h('div', { class: 'right' },
+        P.degrade.label(P.engine.run().steps + ' pages turned', drift * 0.4, 'pg')),
     );
   }
 

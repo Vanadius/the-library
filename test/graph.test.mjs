@@ -13,18 +13,36 @@ import { readFile } from 'node:fs/promises';
 const graph = JSON.parse(await readFile(new URL('../web/data/graph.json', import.meta.url)));
 const N = graph.nodes;
 
+// Navigation neighbours: hallways (bidirectional) + the one-way stair down.
+function navOut(id) {
+  const n = N[id];
+  const out = n.exits.map((e) => e.to);
+  if (n.descent === 'down' && n.down) out.push(n.down);
+  return out;
+}
 function bfs(start, blockKind) {
   const seen = new Set([start]);
   const q = [start];
   while (q.length) {
     const cur = q.shift();
-    for (const e of N[cur].exits) {
-      const t = N[e.to];
-      if (seen.has(e.to)) continue;
-      if (blockKind && t.kind === blockKind && t.id !== start) continue;
-      seen.add(e.to); q.push(e.to);
+    for (const to of navOut(cur)) {
+      const t = N[to];
+      if (seen.has(to)) continue;
+      if (blockKind && t.kind === blockKind && to !== start) continue;
+      seen.add(to); q.push(to);
     }
   }
+  return seen;
+}
+// Reverse reachability: which rooms can REACH the goal (over the nav graph).
+function canReach(goal) {
+  const rev = new Map();
+  for (const id of Object.keys(N)) for (const to of navOut(id)) {
+    if (!rev.has(to)) rev.set(to, []);
+    rev.get(to).push(id);
+  }
+  const seen = new Set([goal]); const q = [goal];
+  while (q.length) { const cur = q.shift(); for (const p of (rev.get(cur) || [])) if (!seen.has(p)) { seen.add(p); q.push(p); } }
   return seen;
 }
 
@@ -44,11 +62,20 @@ test('the exit is reachable from the start', () => {
 });
 
 test('the world is solvable from EVERY room (no soft-locks)', () => {
-  // Edges are bidirectional, so the set of rooms that can reach the exit is just
-  // BFS outward from the exit. It must cover the entire library.
-  const canReachExit = bfs(graph.exit);
-  assert.equal(canReachExit.size, Object.keys(N).length,
+  const reaching = canReach(graph.exit);
+  assert.equal(reaching.size, Object.keys(N).length,
     'every room must be able to reach the exit');
+});
+
+test('the Descent has strata, sanctuaries, and one true stair per floor', () => {
+  assert.ok(graph.meta.strata >= 2, 'multiple strata');
+  const sanctuaries = Object.values(N).filter((n) => n.sanctuary);
+  assert.ok(sanctuaries.length >= graph.meta.strata, 'at least one sanctuary per stratum');
+  const trueStairs = Object.values(N).filter((n) => n.descent === 'down');
+  assert.equal(trueStairs.length, graph.meta.strata - 1, 'one true stair between each pair of floors');
+  for (const s of trueStairs) assert.ok(s.down && N[s.down], 'a stair leads somewhere real');
+  // false stairs exist to make the recognition a reading
+  assert.ok(Object.values(N).some((n) => n.descent === 'false'), 'false stairs exist');
 });
 
 test('the exit is NOT reachable through any mimic (mimics are real dead ends)', () => {

@@ -7,21 +7,28 @@ import { pathToFileURL } from 'node:url';
 
 const graph = JSON.parse(await readFile('web/data/graph.json', 'utf8'));
 
-// shortest path start -> exit
+// shortest path start -> exit, over hallways AND stairs down (the descent)
+const navOut = (id) => {
+  const n = graph.nodes[id];
+  const out = n.exits.map((e) => e.to);
+  if (n.descent === 'down' && n.down) out.push(n.down);
+  return out;
+};
 function shortestPath() {
   const prev = new Map([[graph.start, null]]);
   const q = [graph.start];
   while (q.length) {
     const cur = q.shift();
     if (cur === graph.exit) break;
-    for (const e of graph.nodes[cur].exits) if (!prev.has(e.to)) { prev.set(e.to, cur); q.push(e.to); }
+    for (const to of navOut(cur)) if (!prev.has(to)) { prev.set(to, cur); q.push(to); }
   }
   const path = []; let c = graph.exit;
   while (c != null) { path.unshift(c); c = prev.get(c); }
   return path;
 }
 const path = shortestPath();
-console.log(`shortest start→exit: ${path.length} rooms`);
+const descents = path.filter((id, i) => i > 0 && graph.nodes[path[i - 1]].descent === 'down' && graph.nodes[path[i - 1]].down === id).length;
+console.log(`shortest start→exit: ${path.length} rooms, ${descents} descents (${graph.meta.strata} strata)`);
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 900, height: 760 } });
@@ -48,16 +55,22 @@ console.log('· start rendered');
 await page.evaluate(() => window.P.engine.addNote('the looking-glass room. three ways on. the warm one felt false.'));
 
 // walk the path, screenshotting the lowest-coherence room we hit
-let minCoh = 1, minShotTaken = false, crossingShot = false;
+let minCoh = 1, minShotTaken = false, crossingShot = false, descentShot = false;
 for (let i = 1; i < path.length; i++) {
   const next = path[i];
-  const idx = await page.evaluate((nextId) => {
+  // is this step a stair down, or a hallway?
+  const move = await page.evaluate((nextId) => {
     const n = window.P.engine.current();
-    const k = n.exits.findIndex((e) => e.to === nextId);
-    return k;
+    if (n.descent === 'down' && n.down === nextId) return { descend: true };
+    return { idx: n.exits.findIndex((e) => e.to === nextId) };
   }, next);
-  if (idx < 0) throw new Error(`no exit from ${path[i - 1]} to ${next}`);
-  await page.evaluate((k) => window.P.render.choose(k), idx);
+  if (move.descend) {
+    if (!descentShot) { await page.screenshot({ path: 'test/shot-10-stair.png' }); descentShot = true; console.log('· stair-down room captured'); }
+    await page.evaluate(() => window.P.engine.descend());
+  } else {
+    if (move.idx < 0) throw new Error(`no way from ${path[i - 1]} to ${next}`);
+    await page.evaluate((k) => window.P.render.choose(k), move.idx);
+  }
   await page.waitForTimeout(20);
   if (!crossingShot && await page.evaluate(() => window.P.engine.regionChanged())) {
     await page.waitForTimeout(450); // let the banner animate to peak

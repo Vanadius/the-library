@@ -30,11 +30,12 @@ P.engine = (function () {
     ema: 1, streakLow: 0,
     onChange: null, ended: false,
     regionChanged: false, enteredRegion: null,
+    justDescended: null, falseStair: false,
     lastMoveTime: 0,
   };
 
   const freshMetrics = () => ({ up: 0, down: 0, minCoh: 1, dwellSum: 0, dwellN: 0,
-    followWarmth: 0, compassMoves: 0, retreats: 0, deepRooms: 0 });
+    followWarmth: 0, compassMoves: 0, retreats: 0, deepRooms: 0, descents: 0, falseStairs: 0 });
 
   function init(graph) {
     state.graph = graph;
@@ -80,25 +81,34 @@ P.engine = (function () {
     m.minCoh = Math.min(m.minCoh, target.coherence);
     if (target.coherence < 0.2) m.deepRooms++;
 
-    // --- the dissolving trail (most-recent room behind you, first) ----------
-    if (prev) { state.run.trail.unshift(prev.id); state.run.trail = state.run.trail.slice(0, 8); }
+    // --- descending a stratum: a clean break, a new small world -------------
+    const descended = prev && (target.stratum ?? 0) > (prev.stratum ?? 0);
+    state.justDescended = descended ? (target.stratum ?? 0) : null;
+
+    // --- the dissolving trail (reset when you drop a floor) -----------------
+    if (descended) state.run.trail = [];
+    else if (prev) { state.run.trail.unshift(prev.id); state.run.trail = state.run.trail.slice(0, 8); }
 
     // crossing into a different source-voice is a sense of place worth marking
     const fromTheme = prev ? prev.theme : null;
-    state.regionChanged = fromTheme !== null && fromTheme !== target.theme;
+    state.regionChanged = !descended && fromTheme !== null && fromTheme !== target.theme;
     state.enteredRegion = state.regionChanged ? target.themeLabel : null;
 
     state.node = target;
     state.run.pos = toId;
     state.run.visited[toId] = (state.run.visited[toId] || 0) + 1;
     state.run.steps++;
+    if ((target.stratum ?? 0) > (state.run.deepest ?? 0)) state.run.deepest = target.stratum;
 
     const meta = P.persist.meta();
     meta.steps++;
     if (state.run.visited[toId] === 1) meta.nodesRead++;
+    if ((target.stratum ?? 0) > (meta.deepestEver ?? 0)) meta.deepestEver = target.stratum;
 
-    state.ema = state.ema * 0.7 + target.coherence * 0.3;
-    state.streakLow = target.coherence < 0.42 ? state.streakLow + 1 : 0;
+    // A sanctuary clears the residue: arriving at an oasis heals the drift, so
+    // the HUD comes back to truth and you can rest and orient.
+    if (target.sanctuary) { state.ema = 1; state.streakLow = 0; }
+    else { state.ema = state.ema * 0.7 + target.coherence * 0.3; state.streakLow = target.coherence < 0.42 ? state.streakLow + 1 : 0; }
 
     if (target.kind === 'exit') reachExit();
 
@@ -106,6 +116,21 @@ P.engine = (function () {
     P.persist.saveMeta();
     if (state.onChange) state.onChange();
   }
+
+  // Take the stair in the current room. A true stair carries you down to the
+  // next sanctuary; a false one gives way into a dead end you must climb out of.
+  // You only know which by having read the passage.
+  function descend() {
+    const n = state.node;
+    if (!n || !n.descent || !n.down || state.ended) return;
+    if (n.descent === 'down') { state.run.metrics.descents++; move(n.down); }
+    else { state.run.metrics.falseStairs++; state.falseStair = true; move(n.down); }
+  }
+
+  // Depth — the felt progress of the Descent.
+  function stratum() { return state.node ? (state.node.stratum ?? 0) : 0; }
+  function totalStrata() { return (state.graph.meta && state.graph.meta.strata) || 1; }
+  function strataRemaining() { return Math.max(0, totalStrata() - 1 - stratum()); }
 
   function reachExit() {
     state.ended = true;
@@ -201,6 +226,10 @@ P.engine = (function () {
     addNote, journal, noteWords,
     regionChanged: () => state.regionChanged,
     enteredRegion: () => state.enteredRegion,
+    descend, stratum, totalStrata, strataRemaining,
+    justDescended: () => state.justDescended,
+    clearDescended: () => { state.justDescended = null; },
+    falseStairTaken: () => { const f = state.falseStair; state.falseStair = false; return f; },
     trailReach, trailIndex, isJournalled, beaconStrength,
     presenceMark, disturbedAhead, endingArchetype, endingCoda,
     state,

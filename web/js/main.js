@@ -5,11 +5,11 @@ P.app = (function () {
   const INTRO =
 `You do not remember coming in.
 
-Shelves in every direction. Books on every shelf, words in every book — and you have read enough of them by now to know that almost none of the words mean anything. They arrive from nowhere. They hold together for a line, sometimes a page, and then they forget what they were about.
+Shelves in every direction. Books on every shelf, words in every book — and you have read enough of them by now to know that almost none of the words mean anything. They arrive from nowhere. They hold together for a line, then forget what they were about.
 
-Somewhere in here, one passage was written by a person, on purpose, for you. You are not told what it looks like. You will know it when you read it.
+The library only goes down. On each floor, hidden among the rooms that mean nothing, is one passage that someone *meant* — and it is a stair. Find it by reading, and descend. The fakes will flatter you; the real one will not need to.
 
-You move by reading. That is the only way to move.`;
+At the very bottom is the one page written for you. You will know it when you read it.`;
 
   function boot() {
     const graph = window.GRAPH;
@@ -33,16 +33,28 @@ You move by reading. That is the only way to move.`;
     // drops them where they left off.
   }
 
+  function ordinal(n) {
+    const s = ['th', 'st', 'nd', 'rd'], v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  }
+
   function buildTitle(graph) {
     const meta = P.persist.meta();
     const resuming = P.engine.run().steps > 0 && !P.engine.run().found;
+    const total = (graph.meta && graph.meta.strata) || 1;
+    const depthNow = (P.engine.run().deepest || 0) + 1;
     const screen = el('screen');
     screen.className = '';
     screen.innerHTML = '';
     screen.append(
       h('h1', null, 'PALIMPSEST'),
       h('div', { class: 'sub' }, 'a library of almost-meaning'),
-      h('div', { class: 'intro' }, resuming ? 'You are still inside.\n\nThe shelves are where you left them. So are you.' : INTRO),
+      h('div', { class: 'intro' }, resuming
+        ? `You are still inside, ${ordinal(depthNow)} of ${total} floors down.\n\nThe shelves are where you left them. So are you.`
+        : INTRO),
+      h('div', { class: 'depth-read' }, resuming
+        ? `the true page lies ${Math.max(0, total - depthNow)} ${total - depthNow === 1 ? 'floor' : 'floors'} below you still`
+        : `the true page lies ${total - 1} floors down`),
       h('button', { class: 'enter', onclick: enter }, resuming ? 'go back in' : 'go in'),
       meta.runs > 0 || meta.nodesRead > 50
         ? h('div', { class: 'meta-line' }, `${meta.nodesRead} rooms read · ${meta.runs} ${meta.runs === 1 ? 'descent' : 'descents'}${meta.everFound ? ' · you have found it before' : ''}`)
@@ -91,6 +103,7 @@ You move by reading. That is the only way to move.`;
   function buildLegend() {
     const { h } = P.core;
     const rows = [
+      ['↓', '', 'a stair down', 'offered by any room that might be a way to the next floor — true or false. only the passage tells you which, and only if you read it. a true stair carries you deeper; a false one drops you into a dead end to climb back out of.'],
       ['↩', 'trailmark', 'the way you came', 'a fading trail of the rooms behind you. its reach shrinks the more lost you are — a few steps when your head is clear, nothing in the deep. it only ever points backward.'],
       ['✦', 'beacon', 'a room you marked', 'a beacon over a journalled room one step away. it dims as your notes drift, and goes dark once you can no longer trust them.'],
       ['≀', 'disturbed', 'recently disturbed', 'this hall reads as though something passed through it lately. maybe someone did. it promises nothing — good or bad.'],
@@ -103,6 +116,8 @@ You move by reading. That is the only way to move.`;
     ]));
     const overlay = h('div', { id: 'legend' }, [
       h('h2', null, 'reading the marks'),
+      h('p', { class: 'legend-note' },
+        'The library only goes down. Each floor begins in a sanctuary — an oasis that clears the drift and lets you rest and orient. Somewhere on each floor is a true stair, hidden among rooms that mean nothing; find it by reading, and descend. The depth at the top (Stratum N / M) is your progress; the one true page is kept at the very bottom.'),
       h('div', { class: 'legend-rows' }, list),
       h('p', { class: 'legend-note' },
         'How the drift works: the longer you spend in rooms that mean nothing, the more lost you become — and your instruments stop telling the truth. Labels take strange accents, words go missing, your own notes rewrite themselves, and these marks fade. It lingers, and lifts only slowly when you find clearer rooms.'),

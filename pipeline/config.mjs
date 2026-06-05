@@ -42,12 +42,16 @@ export const MIRRORS = [
 //   7-8 coherent paragraphs · 9 begins quoting the source (used sparingly).
 export const ORDERS = { min: 1, max: 9, oasis: [7, 8], oasisPeak: 9 };
 
-// Graph scale. Minimum-viable target from the design doc — get the loop right
-// before scaling. Override with env GRAPH_SCALE=target|ambitious.
+// Graph scale — now a Descent: a stack of strata you read your way down through.
+// Progress is depth. Each stratum is a small, bounded world (a sanctuary oasis,
+// corridors, mimics) with one true "stair down" you find by recognizing its
+// authored passage, and a fake stair or two that punish a careless step.
+// Keep strata small: the whole point of the rebuild is that you are never lost
+// in an ocean, only in a room. Override with env GRAPH_SCALE=target|ambitious.
 export const SCALE = {
-  minimal:   { oases: 8,  nodesTarget: 800,  mimics: 9,  corridorMin: 4, corridorMax: 9 },
-  target:    { oases: 24, nodesTarget: 5000, mimics: 30, corridorMin: 5, corridorMax: 14 },
-  ambitious: { oases: 48, nodesTarget: 12000, mimics: 70, corridorMin: 6, corridorMax: 18 },
+  minimal:   { strata: 8,  roomsPerStratum: 32, extraOasis: 0.5, mimicsPerStratum: [1, 2], falseDescents: [1, 2], corridorMin: 3, corridorMax: 7 },
+  target:    { strata: 16, roomsPerStratum: 60, extraOasis: 0.8, mimicsPerStratum: [2, 3], falseDescents: [1, 3], corridorMin: 4, corridorMax: 11 },
+  ambitious: { strata: 28, roomsPerStratum: 80, extraOasis: 1.0, mimicsPerStratum: [2, 4], falseDescents: [2, 3], corridorMin: 5, corridorMax: 14 },
 };
 
 export const PATHS = {

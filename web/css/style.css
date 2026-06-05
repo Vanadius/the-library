@@ -55,6 +55,8 @@ body::after { /* drift haze: a cold film that thickens in the deep */
   min-height: 44px;
 }
 #status .loc { color: var(--amber-dim); }
+#status .loc .depth { color: var(--amber); letter-spacing: 0.16em; }
+#status .loc .locname { color: var(--amber-dim); }
 #status .right { text-align: right; }
 
 /* ---- reading area ---- */
@@ -78,6 +80,28 @@ body::after { /* drift haze: a cold film that thickens in the deep */
 
 .ghost { color: var(--amber-dim); font-style: italic; opacity: 0.62; font-size: 14px; margin: 18px 0 6px; }
 .ghost::before { content: "— "; }
+.ghost.falsestair { color: #c98f6a; opacity: 0.85; }
+
+/* Sanctuary: arriving at an oasis clears the drift and brightens the room — an
+   unmistakable landmark and a place to rest. */
+.sanctuary-head { color: var(--amber); letter-spacing: 0.24em; text-transform: uppercase; font-size: 12.5px; text-align: center; margin: 4px 0 22px; text-shadow: 0 0 18px rgba(255,176,0,0.4); opacity: 0.9; }
+.passage.sanctuary { color: #fff4dd; text-shadow: 0 0 2px rgba(255,200,90,0.18); }
+body.in-sanctuary { --drift: 0; }
+body.in-sanctuary::before { background:
+  radial-gradient(ellipse at center, transparent 62%, rgba(0,0,0,0.42) 100%); }
+
+/* The stair down — offered by any descent room, true or false. */
+.descend-control { margin: 22px 0 8px; text-align: center; }
+.descend {
+  background: linear-gradient(180deg, rgba(255,176,0,0.16), rgba(255,176,0,0.04));
+  border: 1px solid var(--amber-dim); color: var(--amber); font: inherit; font-size: 15px;
+  letter-spacing: 0.18em; text-transform: uppercase; padding: 13px 34px; cursor: pointer;
+  border-radius: 3px; transition: background 0.15s, transform 0.08s, box-shadow 0.15s;
+  box-shadow: 0 0 22px rgba(255,176,0,0.1);
+}
+.descend:hover { background: linear-gradient(180deg, rgba(255,176,0,0.28), rgba(255,176,0,0.08)); box-shadow: 0 0 30px rgba(255,176,0,0.22); }
+.descend:active { transform: translateY(2px); }
+.rb-inner.descend-banner { color: #ffe1a0; border-color: rgba(255,176,0,0.7); font-size: clamp(13px, 2.4vw, 18px); }
 
 /* ---- exits ---- */
 #exits { padding: 8px 0 22px; }
@@ -148,6 +172,7 @@ body::after { /* drift haze: a cold film that thickens in the deep */
 #screen .intro { color: var(--paper); max-width: 540px; line-height: 1.8; opacity: 0.92; font-size: 15.5px; white-space: pre-wrap; }
 #screen .enter { margin-top: 44px; color: var(--amber); border: 1px solid var(--amber-dim); background: none; font: inherit; letter-spacing: 0.22em; text-transform: uppercase; padding: 14px 40px; cursor: pointer; animation: breathe 4s ease-in-out infinite; }
 #screen .enter:hover { background: rgba(255,176,0,0.1); }
+#screen .depth-read { margin-top: 30px; color: var(--amber-dim); font-size: 13px; letter-spacing: 0.18em; text-transform: uppercase; opacity: 0.85; }
 #screen .meta-line { margin-top: 26px; color: var(--amber-faint); font-size: 12px; letter-spacing: 0.1em; }
 @keyframes breathe { 0%,100% { opacity: 0.85; } 50% { opacity: 1; } }
 #screen .forget {

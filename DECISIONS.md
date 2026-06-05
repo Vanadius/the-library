@@ -230,3 +230,52 @@ trust the warm ones") in-world. Nothing ever says "higher coherence is good."
 - Tighter corpus front-matter stripping (a little title-page debris survives and,
   honestly, reads as fitting noise in the deep — but it could be cleaner).
 - A larger world (`GRAPH_SCALE=target`) once the loop has been lived in.
+
+---
+
+## The Descent (post-playtest re-architecture)
+
+The first build was one flat ~880-room maze with a single exit. Playtesting found
+the fault line: at that size the One Rule *inverted*. Reading the whole world to
+brute-force the exit was impossible, so the rational player stopped reading and
+navigated by the decay cues and icons instead — exactly what the design forbids.
+And there was nothing to push against: no landmarks, no progress, no sense of
+distance. Reading was simultaneously mandatory and futile, so signals won.
+
+The fix was structural, not a patch. The world is now a **Descent**: a stack of
+**strata** you go down through. Each stratum is a small bounded world (a sanctuary
+oasis, corridors, mimics) with exactly **one true stair down** — an authored
+passage you recognize by reading — and one or two **false stairs** (authored fakes
+that drop you into a dead end). You descend by finding the true stair. The deepest
+stratum's stair is the exit.
+
+Why this resolves every symptom at once:
+
+- **Reading becomes the act of progress, in concentrated bursts.** You skim the
+  noise (a real skill) and *read* the thresholds. The exit-recognition skill — the
+  whole point of the game — is now rehearsed on every floor, not just once at the
+  bottom. The bleed-through fragments are its training montage.
+- **You are never lost in an ocean, only in a room.** Each floor is a small,
+  searchable space.
+- **Oases are unmistakable sanctuaries** (they clear the drift, carry a masthead,
+  and are the floor's landmark) — and the layer's checkpoint.
+- **Depth is felt progress.** "Stratum IV / VIII" up top; "the true page lies N
+  floors below" on the title. Orientation without a compass: it never says which
+  *door*, only how *deep*.
+- **The crutches demote to what they should be** — short-range orientation inside
+  a floor — because depth and sanctuaries now carry progress instead.
+
+Implementation notes:
+- Descent is **one-way** (the stair collapses behind you). Within a stratum,
+  hallways stay bidirectional, so there are no soft-locks — solvability is proven
+  over the navigation graph (hallways + one-way `down` edges).
+- True and false stairs **render identically**. Only the passage tells you which,
+  and only if you read it. This is the final exit/decoy mechanic, fractalised per
+  floor — the per-stratum recognition is a real act of discrimination.
+- Authored stair passages live in `pipeline/descent_text.mjs` (`TRUE_DESCENTS`,
+  `FALSE_DESCENTS`), swappable like the exit. Scale is per-stratum in
+  `pipeline/config.mjs` (`strata`, `roomsPerStratum`, …).
+
+Cut along the way (playtester's call, and right): a "which passage is more meant?"
+calibration mini-game — a correctness buzzer would betray the game's stance that
+you cannot verify your sense of meaning from the inside.

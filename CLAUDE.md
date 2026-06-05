@@ -4,12 +4,21 @@ Context for any Claude (or human) working in this repo.
 
 ## What this is
 
-**PALIMPSEST** — a semantic-horror roguelike. The player is lost in an infinite
-library of Markov-generated text and navigates by *reading*, judging coherence,
-hunting for the one authored passage that is the exit. It's the hard problem of
-consciousness made playable. Full concept: `docs/LIBRARYGAMEDESIGN.md`. Every
-design decision and its justification: `DECISIONS.md`. Read both before changing
-anything load-bearing.
+**PALIMPSEST** — a semantic-horror roguelike. The player is lost in a library of
+Markov-generated text and navigates by *reading*, judging coherence, hunting for
+the one authored passage that is the exit. It's the hard problem of consciousness
+made playable. Full concept: `docs/LIBRARYGAMEDESIGN.md`. Every design decision
+and its justification: `DECISIONS.md`. The stretch-goals/feature design lives in
+`docs/NEXT_MOVEMENTS.md`. Read them before changing anything load-bearing.
+
+**The world is a Descent** (adopted after playtesting — see DECISIONS.md "The
+Descent"). Instead of one flat maze, the library is a stack of **strata** you go
+*down* through. Each stratum is a small bounded world with a **sanctuary** oasis
+(clears the drift, the floor's landmark), corridors, mimics, exactly one **true
+stair down** (an authored passage you recognize by reading), and a **false stair**
+or two (authored fakes that drop you into a dead end). The deepest stratum's stair
+is the exit. Progress is depth. The whole game is the exit-recognition skill,
+rehearsed all the way down.
 
 ## The architecture in one breath
 
@@ -36,13 +45,21 @@ player "higher coherence = good."
 
 ## Invariants you must not break
 
-Enforced by `npm test` (`test/graph.test.mjs`):
+Enforced by `npm test` (`test/graph.test.mjs`, `test/solvability.test.mjs`):
 
 - The exit is reachable from the start, but **never through a mimic** (mimics are
   true dead ends — that's the false-coherence trap).
-- No orphan rooms; every edge is bidirectional (retreat is always possible).
+- **The world is solvable from every room** (no soft-locks). Reachability is
+  computed over the *navigation* graph: bidirectional hallway exits PLUS the
+  one-way `down` edge from each true stair. The build *refuses to write* an
+  unsolvable world (`validate()` throws); `solvability.test.mjs` proves the guard
+  fires on deliberately broken graphs.
+- One **true stair** (`descent: 'down'`, with a `down` target) between each pair
+  of strata; the deepest stratum's stair is the `exit`. At least one sanctuary
+  per stratum.
 - Coherence spans the full gradient (genuine order-1 salad → order-7/8 clarity);
-  the exit is coherence 1.0 and authored.
+  the exit is coherence 1.0 and authored. Authored bleed-through fragments are
+  spliced into ~4% of mid-depth rooms.
 
 Other sacred lines (design constraints, not all test-enforced):
 
