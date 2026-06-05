@@ -20,6 +20,7 @@ P.render = (function () {
     const n = P.engine.current();
     const drift = P.engine.drift();
     setVars();
+    P.audio.setZone(n.theme);
     P.audio.setCoherence(P.engine.localCoherence());
 
     // You just stepped from one voice into another — mark it so the change of
