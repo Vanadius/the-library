@@ -21,5 +21,6 @@ const json = JSON.stringify(graph);
 await writeFile(PATHS.graph, json);
 await writeFile('web/data/graph.js', `window.GRAPH=${json};\n`);
 console.log(`wrote ${PATHS.graph} + graph.js (${(json.length / 1024).toFixed(0)} KB)`);
+console.log(`SOLVABLE ✓  start→exit in ${report.stats.solutionLength} steps · all ${graph.meta.nodeCount} rooms can reach the exit`);
 console.log(JSON.stringify(report.stats, null, 2));
 console.log('\ndone. open web/index.html (or `npm run serve`).');

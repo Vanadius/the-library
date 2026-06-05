@@ -290,29 +290,64 @@ function bfsDistances(b, start) {
   return dist;
 }
 
-function validate(b, start, exit) {
-  const dist = bfsDistances(b, start);
-  const reachable = dist.size;
-  const orphan = b.nodes.size - reachable;
-  if (!dist.has(exit)) throw new Error('INVARIANT VIOLATED: exit not reachable from start');
-  // mimic clusters must not be on the path to the exit (they are dead ends)
-  let mimicLeaks = 0;
-  for (const n of b.nodes.values()) {
-    if (n.kind === 'mimic') {
-      // a mimic node should not be an articulation point toward the exit; cheap
-      // proxy: removing all mimic nodes still leaves exit reachable.
+// Reconstruct an actual shortest path (not just a reachability bit) so we can
+// exhibit a concrete solution and re-check every edge along it.
+function shortestPath(b, start, goal) {
+  const prev = new Map([[start, null]]);
+  const q = [start];
+  while (q.length) {
+    const cur = q.shift();
+    if (cur === goal) break;
+    for (const e of b.nodes.get(cur).exits) if (!prev.has(e.to)) { prev.set(e.to, cur); q.push(e.to); }
+  }
+  if (!prev.has(goal)) return null;
+  const path = []; let c = goal;
+  while (c != null) { path.unshift(c); c = prev.get(c); }
+  return path;
+}
+
+// Prove the world is solvable — and fail the build loudly if it is not, so a
+// broken world is never written. "Solvable" here is total: not just that a path
+// from start to exit exists, but that the exit is reachable from EVERY room
+// (edges are bidirectional, so there are no soft-locks — you can always read
+// your way back out and on). The intended route also never *requires* a mimic.
+export function validate(b, start, exit) {
+  const N = b.nodes.size;
+  if (b.nodes.get(exit)?.kind !== 'exit') throw new Error('INVARIANT VIOLATED: exit node missing/mistyped');
+
+  // 1. a concrete start→exit solution, with every edge on it re-verified
+  const path = shortestPath(b, start, exit);
+  if (!path) throw new Error('UNSOLVABLE: no path from start to exit');
+  for (let i = 1; i < path.length; i++) {
+    if (!b.nodes.get(path[i - 1]).exits.some((e) => e.to === path[i])) {
+      throw new Error('UNSOLVABLE: reconstructed solution path has a broken edge');
     }
   }
-  const exitReachWithoutMimics = reachableAvoiding(b, start, (n) => n.kind === 'mimic').has(exit);
-  if (!exitReachWithoutMimics) throw new Error('INVARIANT VIOLATED: exit only reachable through a mimic');
-  const orders = {};
-  for (const n of b.nodes.values()) orders[n.order] = (orders[n.order] || 0) + 1;
-  const kinds = {};
-  for (const n of b.nodes.values()) kinds[n.kind] = (kinds[n.kind] || 0) + 1;
-  void mimicLeaks;
+
+  // 2. no orphans — the whole library is a single connected world
+  const fromStart = bfsDistances(b, start);
+  const orphan = N - fromStart.size;
+  if (orphan > 0) throw new Error(`INVARIANT VIOLATED: ${orphan} orphan room(s) unreachable from start`);
+
+  // 3. solvable from ANYWHERE — every room can still reach the exit (no soft-lock).
+  // Edges are bidirectional, so rooms-that-can-reach-the-exit == BFS from exit.
+  const canReach = bfsDistances(b, exit);
+  if (canReach.size !== N) throw new Error(`INVARIANT VIOLATED: ${N - canReach.size} room(s) cannot reach the exit (soft-lock)`);
+
+  // 4. the false-coherence trap holds: the exit is reachable without ever
+  // passing through a mimic (mimics are true dead ends)
+  if (!reachableAvoiding(b, start, (n) => n.kind === 'mimic').has(exit)) {
+    throw new Error('INVARIANT VIOLATED: exit only reachable through a mimic');
+  }
+
+  const orders = {}, kinds = {};
+  for (const n of b.nodes.values()) { orders[n.order] = (orders[n.order] || 0) + 1; kinds[n.kind] = (kinds[n.kind] || 0) + 1; }
   return {
     stats: {
-      reachable, orphan, exitDistance: dist.get(exit),
+      solvable: true,
+      solutionLength: path.length - 1,
+      canReachExit: canReach.size, reachableFromStart: fromStart.size, orphan,
+      exitDistance: fromStart.get(exit),
       kinds, orderHistogram: orders,
       meanCoherence: round([...b.nodes.values()].reduce((s, n) => s + (n.coherence ?? 0), 0) / b.nodes.size),
     },
@@ -347,5 +382,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   await writeFile('web/data/graph.js', `window.GRAPH=${json};\n`);
   const kb = (json.length / 1024).toFixed(0);
   console.log(`wrote ${PATHS.graph} + graph.js (${kb} KB)`);
+  console.log(`SOLVABLE ✓  start→exit in ${report.stats.solutionLength} steps · all ${graph.meta.nodeCount} rooms can reach the exit`);
   console.log(JSON.stringify(report.stats, null, 2));
 }

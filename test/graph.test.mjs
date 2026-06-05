@@ -43,6 +43,14 @@ test('the exit is reachable from the start', () => {
   assert.ok(bfs(graph.start).has(graph.exit));
 });
 
+test('the world is solvable from EVERY room (no soft-locks)', () => {
+  // Edges are bidirectional, so the set of rooms that can reach the exit is just
+  // BFS outward from the exit. It must cover the entire library.
+  const canReachExit = bfs(graph.exit);
+  assert.equal(canReachExit.size, Object.keys(N).length,
+    'every room must be able to reach the exit');
+});
+
 test('the exit is NOT reachable through any mimic (mimics are real dead ends)', () => {
   assert.ok(bfs(graph.start, 'mimic').has(graph.exit),
     'exit must be reachable without ever passing through a mimic');
