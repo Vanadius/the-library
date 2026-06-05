@@ -96,6 +96,11 @@ body::after { /* drift haze: a cold film that thickens in the deep */
 .exit .preview { color: var(--paper); opacity: 0.85; }
 .exit .tags { float: right; font-size: 11.5px; color: var(--amber-faint); letter-spacing: 0.08em; }
 .exit .warmth { display: inline-block; margin-left: 10px; letter-spacing: 1px; }
+.exit .beacon { display: inline-block; margin-left: 9px; color: #ffd066; text-shadow: 0 0 8px rgba(255,200,80,0.7); }
+.exit .trailmark { display: inline-block; margin-left: 9px; color: var(--amber-dim); }
+.exit .disturbed { display: inline-block; margin-left: 9px; color: #9fb0c0; opacity: 0.7; }
+.ghost.presence { color: #aebccb; opacity: 0.7; font-style: italic; }
+.ghost.presence::before { content: "— "; }
 .exit.back { border-left-color: var(--amber-faint); opacity: 0.85; }
 .exit.visited .preview::after { content: " ·"; }
 
@@ -163,6 +168,17 @@ body::after { /* drift haze: a cold film that thickens in the deep */
   16% { opacity: 1; transform: none; }
   66% { opacity: 1; }
   100% { opacity: 0; }
+}
+
+/* Accessibility: honour reduced-motion. The passage is always legible anyway;
+   this calms the chrome's animation for readers the motion would hurt. The
+   semantic degradation (drifting words, beacons fading) remains — only the
+   restless motion is stilled. (docs/NEXT_MOVEMENTS.md §7) */
+@media (prefers-reduced-motion: reduce) {
+  .passage { animation: none; }
+  #region-banner.show .rb-inner { animation: regionStill 2.6s linear forwards; }
+  #screen h1, #screen .enter { animation: none; }
+  @keyframes regionStill { 0% { opacity: 0; } 12% { opacity: 1; } 70% { opacity: 1; } 100% { opacity: 0; } }
 }
 
 .hidden { display: none !important; }

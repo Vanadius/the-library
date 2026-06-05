@@ -35,3 +35,33 @@ export const FALSE_EXITS = [
 
   `There is a real passage in this library and it is not this one. I want to be honest with you about that, which is itself the kind of thing the real one would say, which should worry you, because anything can say it, because saying it is free, because I am saying it now and I do not know if I mean it and neither, now, do you.`,
 ];
+
+// ENDINGS — the coda after the exit, chosen by *how* you read your way here.
+// The exit text is the same recognition for everyone; this is the mirror. The
+// runtime tallies a few quiet metrics over a run (did you flee the noise or wade
+// into it, did you follow the warmth, did you read slowly, did you keep turning
+// back) and shows the one coda that best fits. The rubric is never revealed —
+// the moment you can see the score, you optimize for an ending instead of
+// reading. (See docs/NEXT_MOVEMENTS.md §5.) Baked into the graph meta at build
+// time; swap freely.
+export const EXIT_CODAS = {
+  // hugged the coherent halls, fled the salad
+  cartographer:
+`You kept to the lit places. When the words began to come apart you turned back, and found another way that held its shape a little longer, and you were right to — there is no medal for drowning. But you must wonder, now, what you walked past in the dark you would not enter. The library is mostly dark. So, it turns out, is everything worth finding.`,
+
+  // went deep into the noise, repeatedly
+  diver:
+`You went down into the worst of it on purpose. You sat in rooms that meant nothing and read them anyway, looking, and the looking did not stop even when the looking hurt. People will tell you that was reckless. They have never had to find anything that mattered. You learned the thing that cannot be taught from the shallow end: that you have to go where the meaning isn't, to be sure of it when it is.`,
+
+  // followed the compass / the warmth
+  trusting:
+`You followed the warmth. It is a good instinct and it betrayed you more than once, and still you arrived, which says something about instinct and something about grace. But notice: at the end you did not trust the warmth. You trusted the reading. The warmth got you close; the reading got you here. Remember which was which, the next time something glows.`,
+
+  // lots of turning back, slow and uncertain
+  doubter:
+`You doubted everything, including yourself, and you kept turning back to check. It made you slow. It also meant you were never once fooled for long. The library is built to reward certainty with disaster, and you refused to be certain, and so here you are, unfooled, at the only thing in it that was ever true. Doubt is not the opposite of finding. Sometimes it is the method.`,
+
+  // slow, attentive, balanced — read everything carefully
+  reader:
+`You read. Not toward anything — you simply read, carefully, the way the careful read, giving each room the attention it had no right to expect. That is the whole skill. That is the only skill. Everything else in here is machinery for finding out whether you have it, and you have it, and the door knew you would the moment you slowed down to be sure.`,
+};

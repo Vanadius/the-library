@@ -79,6 +79,23 @@ test('there are oases of multiple distinct themes', () => {
   assert.ok(oasisThemes.size >= 3, 'at least three distinct oasis voices');
 });
 
+test('authored fragments bleed through into some rooms', () => {
+  const bled = Object.values(N).filter((n) => n.bleed);
+  assert.ok(bled.length >= 8, 'several rooms carry an authored bleed-through fragment');
+  for (const n of bled) {
+    assert.ok(n.kind === 'corridor' || n.kind === 'mimic', 'bleed never lands in an oasis or the exit');
+  }
+  assert.equal(graph.meta.bleedCount, bled.length);
+});
+
+test('behavior-keyed endings are baked into the graph meta', () => {
+  const codas = graph.meta.codas || {};
+  assert.ok(Object.keys(codas).length >= 4, 'multiple endings exist');
+  for (const k of ['reader', 'diver', 'cartographer']) {
+    assert.ok(typeof codas[k] === 'string' && codas[k].length > 120, `coda "${k}" is a substantial authored passage`);
+  }
+});
+
 test('mimics exist and form terminal clusters of high apparent coherence', () => {
   const mimics = Object.values(N).filter((n) => n.kind === 'mimic');
   assert.ok(mimics.length >= 3, 'mimics present');

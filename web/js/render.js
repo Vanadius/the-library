@@ -44,6 +44,11 @@ P.render = (function () {
     const ghost = P.ghosts.forNode(n);
     if (ghost) reader.appendChild(h('div', { class: 'ghost' }, P.degrade.label(ghost, drift * 0.5, n.id + 'g')));
 
+    // Evidence that you are not the only thing reading in here — only on return,
+    // bolder in the deep. Never a navigational tell.
+    const presence = P.engine.presenceMark(n);
+    if (presence) reader.appendChild(h('div', { class: 'ghost presence' }, P.degrade.label(presence, drift * 0.4, n.id + 'pr')));
+
     renderExits(n, drift, reader);
     reader.scrollTop = 0;
   }
@@ -78,6 +83,8 @@ P.render = (function () {
     wrap.appendChild(h('div', { class: 'exits-label' }, P.degrade.label('the ways on', drift * 0.6, 'ways')));
 
     const compass = P.persist.compassUnlocked();
+    const reach = P.engine.trailReach();
+    const beacon = P.engine.beaconStrength();
     exits.forEach((e, i) => {
       const t = P.engine.node(e.to);
       const visited = P.engine.visitedCount(e.to) > 0;
@@ -85,6 +92,21 @@ P.render = (function () {
       const preview = P.degrade.label(previewRaw, clamp(drift * 0.6), e.to + 'pv');
 
       const tags = [];
+
+      // Journal beacon: a room you marked, lit while the note still holds.
+      if (P.engine.isJournalled(e.to) && beacon > 0.12) {
+        tags.push(h('span', { class: 'beacon', title: 'you left a note here', style: 'opacity:' + beacon.toFixed(2) }, '✦'));
+      }
+      // The dissolving trail: the way back, fading with how lost you are.
+      const ti = P.engine.trailIndex(e.to);
+      if (ti >= 0 && ti < reach) {
+        const op = (1 - ti / Math.max(1, reach)) * 0.8 + 0.2;
+        tags.push(h('span', { class: 'trailmark', title: 'the way back', style: 'opacity:' + op.toFixed(2) }, ti === 0 ? '↩' : '·'));
+      }
+      // A hall that reads as recently disturbed (presence; unreliable by design).
+      if (P.engine.disturbedAhead(e.to)) {
+        tags.push(h('span', { class: 'disturbed', title: 'recently disturbed' }, '≀'));
+      }
       if (compass) {
         tags.push(h('span', { class: 'warmth', title: 'a sense of the air ahead' },
           P.degrade.warmth(t.coherence, drift, e.to)));

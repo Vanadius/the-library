@@ -17,7 +17,8 @@ import { rng, hashSeed, randInt, pick, shuffle } from './lib/rng.mjs';
 import { MarkovCorpus, detokenize, tokenize } from './lib/markov.mjs';
 import { ReferenceModel } from './lib/reference_model.mjs';
 import { PROFILES, weightedProfile } from './lib/profiles.mjs';
-import { EXIT_TEXT, FALSE_EXITS } from './exit_text.mjs';
+import { EXIT_TEXT, FALSE_EXITS, EXIT_CODAS } from './exit_text.mjs';
+import { FRAGMENTS } from './fragments.mjs';
 import { SEED, CORPUS, ORDERS, SCALE, PATHS } from './config.mjs';
 
 const DEDUP_L = 22; // reject Markov passages reproducing >= this many verbatim source tokens
@@ -209,6 +210,36 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
     delete n.surprisal;
   }
 
+  // ---- 6b. Authored bleed-through ----------------------------------------
+  // Splice one true, authored sentence into a small fraction of corridor/mimic
+  // rooms — the older hand showing through the noise. We splice AFTER the first
+  // sentence so the room's opening (and thus its hallway preview) stays Markov:
+  // the bleed is found by reading, never advertised by a glimpse. Placement is
+  // weighted to mid-depth and ignores whether a room leads anywhere — following
+  // the meaning must remain a trap, not a strategy. (docs/NEXT_MOVEMENTS.md §1)
+  const bleedRand = rng(`${seed}:bleed`);
+  const maxDist = Math.max(...[...dist.values()]);
+  let bleedPool = [...b.nodes.values()].filter((n) => {
+    if (n.kind !== 'corridor' && n.kind !== 'mimic') return false;
+    const d = dist.get(n.id) ?? 0;
+    return d >= maxDist * 0.18 && d <= maxDist * 0.85; // mid-depth band
+  });
+  bleedPool = shuffle(bleedRand, bleedPool);
+  const bleedCount = Math.max(8, Math.round(b.nodes.size * 0.04));
+  const frags = shuffle(bleedRand, FRAGMENTS);
+  for (let i = 0; i < Math.min(bleedCount, bleedPool.length); i++) {
+    const node = bleedPool[i];
+    const fragment = frags[i % frags.length];
+    const parts = node.text.split(/(?<=[.!?”"])\s+/);
+    if (parts.length <= 1) node.text = node.text + ' ' + fragment;
+    else {
+      const at = 1 + Math.floor(bleedRand() * (parts.length - 1));
+      parts.splice(at, 0, fragment);
+      node.text = parts.join(' ');
+    }
+    node.bleed = true;
+  }
+
   // ---- 7. Previews (peer down each hall) ----------------------------------
   for (const n of b.nodes.values()) {
     for (const e of n.exits) {
@@ -228,7 +259,9 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
       nodeCount: b.nodes.size,
       oasisCount: oases.length,
       themes: [...new Set([...b.nodes.values()].map((n) => n.themeLabel))],
+      bleedCount: [...b.nodes.values()].filter((n) => n.bleed).length,
       stats: report.stats,
+      codas: EXIT_CODAS, // behavior-keyed endings, read by the runtime
     },
     start: startNode,
     exit: exitId,
@@ -237,6 +270,7 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
       order: n.order, coherence: Math.round(n.coherence * 1000) / 1000,
       perplexity: Math.round(n.perplexity * 10) / 10,
       profile: n.profile, authored: n.authored || undefined,
+      bleed: n.bleed || undefined,
       text: n.text,
       exits: n.exits.map((e) => ({ to: e.to, preview: e.preview })),
     }])),

@@ -112,11 +112,15 @@ You move by reading. That is the only way to move.`;
     const screen = el('screen');
     screen.className = 'ending';
     screen.innerHTML = '';
+    // The coda is chosen by how you read your way here — a mirror, not a score.
+    const coda = P.engine.endingCoda();
+    const intro = coda.text
+      || `You found the one page that was meant.\n\nWhether your certainty that it was real proves anything about you — whether recognition is understanding, or only what understanding feels like from the inside — the library does not say.`;
     screen.append(
       h('h1', null, 'you turned around'),
       h('div', { class: 'sub' }, 'the door was the reading'),
-      h('div', { class: 'intro' },
-        `You found the one page that was meant.\n\nWhether your certainty that it was real proves anything about you — whether recognition is understanding, or only what understanding feels like from the inside — the library does not say. It never did.\n\n${meta.nodesRead} rooms. ${meta.runs} ${meta.runs === 1 ? 'descent' : 'descents'}. One sentence that was waiting.`),
+      h('div', { class: 'intro' }, intro),
+      h('div', { class: 'meta-line' }, `${meta.nodesRead} rooms · ${meta.runs} ${meta.runs === 1 ? 'descent' : 'descents'} · one sentence that was waiting`),
       h('button', { class: 'enter', onclick: () => { P.engine.newRun(); buildTitle(window.GRAPH); el('screen').classList.remove('hidden'); } }, 'go in again'),
       h('div', { class: 'meta-line' }, 'the world reshuffles only when it is rebuilt. these shelves remain. you, perhaps, do not.'),
     );

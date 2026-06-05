@@ -82,10 +82,18 @@ await page.waitForSelector('.passage.authored');
 await page.screenshot({ path: 'test/shot-03-exit.png' });
 console.log(`· reached exit, ended=${ended}, min coherence en route=${minCoh.toFixed(2)}`);
 
-// open the journal to verify drift on notes renders
+// journal (note still present before we end the run) — verifies note drift
 await page.evaluate(() => window.P.app.openJournal());
 await page.waitForTimeout(30);
 await page.screenshot({ path: 'test/shot-04-journal.png' });
+await page.evaluate(() => window.P.app.closeJournal());
+
+// turn around → the behaviour-keyed coda
+await page.click('.exit.back');
+await page.waitForTimeout(60);
+const archetype = await page.evaluate(() => window.P.engine.endingArchetype());
+await page.screenshot({ path: 'test/shot-07-ending.png' });
+console.log(`· ending coda shown (archetype: ${archetype})`);
 
 await browser.close();
 if (errors.length) { console.error('CONSOLE/PAGE ERRORS:\n' + errors.join('\n')); process.exit(1); }
