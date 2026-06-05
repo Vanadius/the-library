@@ -7,7 +7,8 @@
   "scripts": {
     "fetch": "node pipeline/fetch_corpus.mjs",
     "generate": "node --max-old-space-size=4096 pipeline/generate_graph.mjs",
-    "build": "node pipeline/build.mjs",
+    "build": "node pipeline/build.mjs && node tools/bundle.mjs",
+    "bundle": "node tools/bundle.mjs",
     "test": "node --test test/*.test.mjs",
     "playtest": "node test/playtest.mjs",
     "serve": "node tools/serve.mjs"
