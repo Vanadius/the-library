@@ -100,8 +100,8 @@ P.render = (function () {
       // The dissolving trail: the way back, fading with how lost you are.
       const ti = P.engine.trailIndex(e.to);
       if (ti >= 0 && ti < reach) {
-        const op = (1 - ti / Math.max(1, reach)) * 0.8 + 0.2;
-        tags.push(h('span', { class: 'trailmark', title: 'the way back', style: 'opacity:' + op.toFixed(2) }, ti === 0 ? '↩' : '·'));
+        const op = (1 - ti / Math.max(1, reach)) * 0.75 + 0.25;
+        tags.push(h('span', { class: 'trailmark', title: 'the way back', style: 'opacity:' + op.toFixed(2) }, '↩'));
       }
       // A hall that reads as recently disturbed (presence; unreliable by design).
       if (P.engine.disturbedAhead(e.to)) {

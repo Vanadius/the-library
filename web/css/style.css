@@ -122,6 +122,24 @@ body::after { /* drift haze: a cold film that thickens in the deep */
 #journal button { background: none; border: 1px solid var(--amber-faint); color: var(--amber); font: inherit; padding: 6px 16px; cursor: pointer; letter-spacing: 0.08em; }
 #journal button:hover { border-color: var(--amber); }
 
+/* ---- the key / legend overlay ---- */
+#legend { position: fixed; inset: 0; z-index: 60; background: #060504; display: none; flex-direction: column; padding: 6vh 8vw; overflow-y: auto; }
+#legend.open { display: flex; }
+#legend h2 { color: var(--amber-dim); font-size: 14px; letter-spacing: 0.2em; text-transform: uppercase; font-weight: normal; margin: 0 0 18px; }
+#legend .legend-rows { margin-bottom: 8px; }
+#legend .legend-row { display: flex; gap: 16px; align-items: baseline; margin: 0 0 16px; }
+#legend .legend-glyph { flex: 0 0 28px; text-align: center; font-size: 18px; color: var(--amber); }
+#legend .legend-glyph.beacon { color: #ffd066; text-shadow: 0 0 8px rgba(255,200,80,0.7); }
+#legend .legend-glyph.trailmark { color: var(--amber-dim); }
+#legend .legend-glyph.disturbed { color: #9fb0c0; }
+#legend .legend-name { color: var(--paper); font-size: 15px; }
+#legend .legend-desc { color: var(--amber-faint); font-size: 13.5px; line-height: 1.5; max-width: 60ch; }
+#legend .legend-note { color: var(--amber-dim); font-size: 13.5px; line-height: 1.6; max-width: 64ch; margin: 14px 0 0; }
+#legend .legend-note.dim { color: var(--amber-faint); font-style: italic; }
+#legend .jbtns { margin-top: 22px; }
+#legend button { background: none; border: 1px solid var(--amber-faint); color: var(--amber); font: inherit; padding: 6px 16px; cursor: pointer; letter-spacing: 0.08em; }
+#legend button:hover { border-color: var(--amber); }
+
 /* ---- title / intro screen ---- */
 #screen { position: fixed; inset: 0; z-index: 70; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 6vh 8vw; }
 #screen.hidden { display: none; }

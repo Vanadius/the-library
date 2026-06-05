@@ -76,7 +76,47 @@ You move by reading. That is the only way to move.`;
       sound.textContent = P.audio.isEnabled() ? 'sound: on' : 'sound: off';
       if (P.audio.isEnabled()) { P.audio.start(); P.audio.setCoherence(P.engine.localCoherence()); }
     };
+    // A "key" control, injected so it lives in both the multi-file and the
+    // single-file builds without duplicating markup.
+    if (!el('btn-key')) {
+      const key = h('button', { id: 'btn-key', title: 'what the marks mean (?)', onclick: openKey }, 'key');
+      sound.insertAdjacentElement('afterend', key);
+    }
   }
+
+  // ---- the key (what the HUD marks mean) ----
+  // Opt-in on purpose: players who want to stay in the dark never open it; the
+  // confused get a clear explanation. It explains the *chrome* (marks, drift),
+  // never where the door is — reading is still the only compass.
+  function buildLegend() {
+    const { h } = P.core;
+    const rows = [
+      ['↩', 'trailmark', 'the way you came', 'a fading trail of the rooms behind you. its reach shrinks the more lost you are — a few steps when your head is clear, nothing in the deep. it only ever points backward.'],
+      ['✦', 'beacon', 'a room you marked', 'a beacon over a journalled room one step away. it dims as your notes drift, and goes dark once you can no longer trust them.'],
+      ['≀', 'disturbed', 'recently disturbed', 'this hall reads as though something passed through it lately. maybe someone did. it promises nothing — good or bad.'],
+      ['·', '', 'you have been here', 'a hall you have already walked at least once.'],
+      ['▓', 'warmth', 'the air ahead', 'if it has come to you yet: a wordless sense of how coherent the next room feels. warmer is more ordered — and it is fooled by the most beautiful dead ends. trust your reading over it.'],
+    ];
+    const list = rows.map(([g, cls, name, desc]) => h('div', { class: 'legend-row' }, [
+      h('span', { class: 'legend-glyph ' + cls }, g),
+      h('div', null, [h('div', { class: 'legend-name' }, name), h('div', { class: 'legend-desc' }, desc)]),
+    ]));
+    const overlay = h('div', { id: 'legend' }, [
+      h('h2', null, 'reading the marks'),
+      h('div', { class: 'legend-rows' }, list),
+      h('p', { class: 'legend-note' },
+        'How the drift works: the longer you spend in rooms that mean nothing, the more lost you become — and your instruments stop telling the truth. Labels take strange accents, words go missing, your own notes rewrite themselves, and these marks fade. It lingers, and lifts only slowly when you find clearer rooms.'),
+      h('p', { class: 'legend-note' },
+        'One thing never drifts: the passage you are reading. The incoherence there is real — in the words themselves, never in the ink.'),
+      h('p', { class: 'legend-note dim' },
+        'None of these marks know where the door is. Only reading does.'),
+      h('div', { class: 'jbtns' }, h('button', { onclick: closeKey }, 'close')),
+    ]);
+    document.body.appendChild(overlay);
+    return overlay;
+  }
+  function openKey() { (el('legend') || buildLegend()).classList.add('open'); }
+  function closeKey() { const l = el('legend'); if (l) l.classList.remove('open'); }
 
   // ---- journal ----
   function openJournal() {
@@ -129,10 +169,16 @@ You move by reading. That is the only way to move.`;
 
   function wireInput() {
     document.addEventListener('keydown', (ev) => {
+      const legend = el('legend');
+      if (legend && legend.classList.contains('open')) {
+        if (ev.key === 'Escape' || ev.key === '?') closeKey();
+        return;
+      }
       if (el('journal').classList.contains('open')) {
         if (ev.key === 'Escape') closeJournal();
         return;
       }
+      if (ev.key === '?') { ev.preventDefault(); openKey(); return; }
       if (!el('screen').classList.contains('hidden')) {
         if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); const b = document.querySelector('#screen .enter'); if (b) b.click(); }
         return;
@@ -146,7 +192,7 @@ You move by reading. That is the only way to move.`;
     });
   }
 
-  return { boot, endScreen, openJournal, closeJournal, saveNote };
+  return { boot, endScreen, openJournal, closeJournal, saveNote, openKey, closeKey };
 })();
 
 document.addEventListener('DOMContentLoaded', P.app.boot);
