@@ -48,10 +48,14 @@ export const ORDERS = { min: 1, max: 9, oasis: [7, 8], oasisPeak: 9 };
 // authored passage, and a fake stair or two that punish a careless step.
 // Keep strata small: the whole point of the rebuild is that you are never lost
 // in an ocean, only in a room. Override with env GRAPH_SCALE=target|ambitious.
+// Each stratum is a coherent RIDGE (the true line to the stair) with degrading
+// dead-end spurs and a couple of coherent lures hung off it. `ridge` is the
+// length of that true line; `roomsPerStratum` is the whole floor including the
+// wrong turns. Kept small so the mechanic can teach itself.
 export const SCALE = {
-  minimal:   { strata: 8,  roomsPerStratum: 32, extraOasis: 0.5, mimicsPerStratum: [1, 2], falseDescents: [1, 2], corridorMin: 3, corridorMax: 7 },
-  target:    { strata: 16, roomsPerStratum: 60, extraOasis: 0.8, mimicsPerStratum: [2, 3], falseDescents: [1, 3], corridorMin: 4, corridorMax: 11 },
-  ambitious: { strata: 28, roomsPerStratum: 80, extraOasis: 1.0, mimicsPerStratum: [2, 4], falseDescents: [2, 3], corridorMin: 5, corridorMax: 14 },
+  minimal:   { strata: 6,  ridge: [3, 5],  roomsPerStratum: 22, mimicsPerStratum: [1, 2], falseDescents: [1, 2], corridorMin: 2, corridorMax: 5 },
+  target:    { strata: 12, ridge: [4, 7],  roomsPerStratum: 44, mimicsPerStratum: [2, 3], falseDescents: [1, 3], corridorMin: 3, corridorMax: 8 },
+  ambitious: { strata: 20, ridge: [5, 9],  roomsPerStratum: 70, mimicsPerStratum: [2, 4], falseDescents: [2, 3], corridorMin: 4, corridorMax: 12 },
 };
 
 export const PATHS = {

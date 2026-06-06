@@ -306,3 +306,49 @@ Why it belongs:
 Reveal is gradual (first show at 3 visits, fully excavated by 6). The fragments
 read like scraps of one lost narrative, so an attentive player half-assembles a
 story that is never given in order.
+
+---
+
+## The coherence ridge (correcting the gradient — from a Cowork review)
+
+A reviewer (a second Claude, playing it cold) caught the deepest flaw, and they
+were right: **the solution path was not coherence-monotonic.** 21% of the true
+path scored below 0.40 coherence — rooms of literal word-salad (min 0.03) — that a
+player was *forced* to walk through. So reading honestly got you correctly
+punished: the degradation said "wrong way" on the only way forward. The compass
+and the maze disagreed.
+
+The cause was a genuine conflict between two design intents. The **bible** (§2)
+says order is *not* a function of distance and "you cannot walk toward coherence"
+— coherence is a liar. But Derek's **original** intent was the opposite: *a true,
+sensical line lies between you and the exit; degradation means you are wrong.* I
+had built the bible's version and lost his.
+
+The fix reconciles both rather than picking one. Each floor is now a **ridge** —
+a thread of genuine coherence (order 6–8) from the sanctuary to the true stair.
+**Following the sense leads you home.** Everything that degrades hangs *off* the
+ridge as dead-end spurs, so straying is where the text comes apart — honest
+feedback at last. But the **false-coherence traps survive, relocated to the forks
+that matter**: mimics and false stairs branch off the ridge via *coherent*
+approaches, so at the fork they read as true as the way on, and only *reading the
+destination* exposes the flatterer. Degradation warns you off the boring wrong
+turns; reading is what beats the seductive ones. That is the whole thesis, and now
+the map agrees with it.
+
+Measured, before → after (same seed):
+- mean coherence on the true path: 0.665 → **0.863**
+- true-path rooms below 0.40 (forced salad): **21% → 0%**
+- minimum coherence on the path: 0.032 → **0.715**
+
+A second win falls out for free: the drift now stays *low while you are on the
+true path*, so the HUD is legible exactly at the decisions that matter, and only
+corrupts when you wander off — fixing the "instruments fail when you need them"
+doom loop the reviewer also flagged.
+
+And scale was cut hard (the review: "467 nodes to carry one mechanic"): the
+minimal world is now 6 strata / ~215 rooms / a 33-step descent, so the mechanic
+has room to teach itself.
+
+This reverses the earlier deference to the bible's "coherence is purely a liar"
+line. The honest synthesis: coherence is mostly trustworthy *and* it lies at the
+forks — which is a truer picture of fluency-without-meaning than either extreme.

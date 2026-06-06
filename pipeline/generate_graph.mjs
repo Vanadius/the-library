@@ -130,38 +130,43 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
     const theme = themes[s % themes.length];
     const last = s === S - 1;
 
-    // The sanctuary you arrive in: a coherent oasis, the layer's landmark.
+    // The sanctuary you arrive in: a coherent oasis, the head of the true line.
     const entry = gen(theme, pick(b.rand, ORDERS.oasis), 'oasis', randInt(b.rand, 80, 120), `s${s}-entry`);
     const en = b.nodes.get(entry); en.stratum = s; en.sanctuary = true; en.entry = true;
-    const region = [entry];
 
-    // Maybe a second oasis deeper in the layer.
-    if (b.rand() < cfg.extraOasis) {
-      const o2 = gen(theme, pick(b.rand, ORDERS.oasis), 'oasis', randInt(b.rand, 70, 110), `s${s}-o2`);
-      b.nodes.get(o2).stratum = s; b.nodes.get(o2).sanctuary = true;
-      corridor(entry, o2, theme, s).ids.forEach((id) => region.push(id));
-      region.push(o2);
-    }
+    // THE RIDGE: a thread of genuine coherence from the sanctuary to the true
+    // stair. This IS the solution path for the floor — following the sense leads
+    // you home. (The original intent, recovered. See DECISIONS.md "The coherence
+    // ridge".) Everything that degrades hangs OFF this thread as a wrong turn.
+    const ridgeLen = randInt(b.rand, cfg.ridge[0], cfg.ridge[1]);
+    const ridge = corridor(entry, null, theme, s, 'ridge', [ridgeLen, ridgeLen]);
+    const ridgeNodes = [entry, ...ridge.ids];
+    const trueText = last ? EXIT_TEXT : TRUE_DESCENTS[s % TRUE_DESCENTS.length];
+    const stair = authored(trueText, last ? 'exit' : 'descent', theme, 9);
+    const st = b.nodes.get(stair); st.stratum = s; if (last) st.coherenceOverride = 1.0; else st.descent = 'down';
+    b.link(ridge.tail, stair); // the stair sits at the end of the coherent line
 
-    // Grow a bounded maze inside the stratum.
+    // WRONG TURNS: degrading dead-end spurs hanging off the ridge (and off each
+    // other). Wander down one and the text comes apart — honest feedback that
+    // you've left the thread; backtrack and coherence returns. These are pure
+    // dead ends, so the ridge stays the one true path.
+    const region = ridgeNodes.slice();
+    const spurs = [];
     let guard = 0;
     const target = cfg.roomsPerStratum;
-    while (region.length < target && guard++ < target * 5) {
-      const anchorId = pick(b.rand, region);
-      const ak = b.nodes.get(anchorId).kind;
-      if (ak !== 'corridor' && ak !== 'oasis') continue;
-      const loop = b.rand() < 0.3;
-      const dest = loop ? pick(b.rand, region) : null;
-      corridor(anchorId, dest, theme, s, undefined, [2, cfg.corridorMax]).ids.forEach((id) => region.push(id));
+    while (region.length < target && guard++ < target * 6) {
+      const anchorId = pick(b.rand, b.rand() < 0.6 ? ridgeNodes : (spurs.length ? spurs : ridgeNodes));
+      const made = corridor(anchorId, null, theme, s, weightedProfile(b.rand), [2, cfg.corridorMax]);
+      made.ids.forEach((id) => { region.push(id); spurs.push(id); });
     }
 
-    // Mimics: beautiful dead ends inside the layer.
-    const corridorsOf = () => region.filter((id) => b.nodes.get(id).kind === 'corridor');
+    // LURES: mimics and false stairs that branch off the ridge via a coherent
+    // approach, so at the fork they read as true as the way on — only reading the
+    // destination tells you it's a flatterer or a dead end. This is where the
+    // discrimination actually lives. Filler spurs warn you with decay; lures do not.
     const nMimics = randInt(b.rand, cfg.mimicsPerStratum[0], cfg.mimicsPerStratum[1]);
     for (let m = 0; m < nMimics; m++) {
-      const base = corridorsOf(); if (!base.length) break;
-      const anchorId = pick(b.rand, base);
-      const approach = corridor(anchorId, null, theme, s, b.rand() < 0.6 ? 'false_summit' : 'cliff', [2, 5]);
+      const approach = corridor(pick(b.rand, ridgeNodes), null, theme, s, b.rand() < 0.5 ? 'ridge' : 'false_summit', [1, 3]);
       const size = randInt(b.rand, 2, 4);
       const cluster = [];
       for (let k = 0; k < size; k++) { const c = gen(theme, pick(b.rand, [7, 8]), 'mimic', randInt(b.rand, 60, 100), `s${s}-mim${m}-${k}`); b.nodes.get(c).stratum = s; cluster.push(c); }
@@ -169,31 +174,18 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
       b.link(approach.tail, cluster[0]);
     }
 
-    // The TRUE stair down — authored, embedded at a moderate distance from the
-    // sanctuary: far enough to require reading your way to it, near enough that a
-    // floor is a brisk search and not a slog.
-    const distFromEntry = bfsDistances(b, entry);
-    const corr = corridorsOf().filter((id) => distFromEntry.has(id)).sort((a, c) => (distFromEntry.get(a) ?? 0) - (distFromEntry.get(c) ?? 0));
-    const far = corr.length ? corr[Math.floor(corr.length * 0.6)] : entry;
-    const trueText = last ? EXIT_TEXT : TRUE_DESCENTS[s % TRUE_DESCENTS.length];
-    const stair = authored(trueText, last ? 'exit' : 'descent', theme, 9);
-    const st = b.nodes.get(stair); st.stratum = s; if (last) st.coherenceOverride = 1.0; else st.descent = 'down';
-    corridor(far, stair, theme, s, 'steady_decline', [2, 4]);
-
     // FALSE stairs — authored fakes that offer "down" and drop you into a dead
-    // end. They make the recognition a reading, not a reflex.
+    // end. Reached by a coherent approach so they tie with the true stair until
+    // you read them. The recognition is a reading, not a reflex.
     if (!last) {
       const nFalse = randInt(b.rand, cfg.falseDescents[0], cfg.falseDescents[1]);
       for (let f = 0; f < nFalse; f++) {
-        const base = corridorsOf(); if (!base.length) break;
-        const anchorId = pick(b.rand, base);
-        const approach = corridor(anchorId, null, theme, s, 'false_summit', [2, 4]);
+        const approach = corridor(pick(b.rand, ridgeNodes), null, theme, s, 'ridge', [1, 3]);
         const fakeText = FALSE_DESCENTS[(s + f) % FALSE_DESCENTS.length];
         const fake = authored(fakeText, 'mimic', theme, 8);
         const fn = b.nodes.get(fake); fn.stratum = s; fn.descent = 'false';
         b.link(approach.tail, fake);
-        // taking its "stair" drops into a small dead end you must climb back from
-        const trap = gen(theme, pick(b.rand, [6, 7]), 'mimic', randInt(b.rand, 50, 80), `s${s}-trap${f}`);
+        const trap = gen(theme, pick(b.rand, [3, 4, 5]), 'mimic', randInt(b.rand, 50, 80), `s${s}-trap${f}`);
         b.nodes.get(trap).stratum = s;
         b.link(fake, trap);
         fn.down = trap;
@@ -207,9 +199,7 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
     if (last) {
       const nDecoys = Math.min(2, FALSE_EXITS.length);
       for (let d = 0; d < nDecoys; d++) {
-        const base = corridorsOf(); if (!base.length) break;
-        const anchorId = pick(b.rand, base);
-        const approach = corridor(anchorId, null, theme, s, 'false_summit', [2, 4]);
+        const approach = corridor(pick(b.rand, ridgeNodes), null, theme, s, 'ridge', [1, 3]);
         const decoy = authored(FALSE_EXITS[d], 'mimic', theme, 8);
         b.nodes.get(decoy).stratum = s;
         b.link(approach.tail, decoy);

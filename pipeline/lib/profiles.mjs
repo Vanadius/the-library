@@ -12,6 +12,14 @@ import { randInt } from './rng.mjs';
 const clamp = (x, lo = 1, hi = 8) => Math.max(lo, Math.min(hi, Math.round(x)));
 
 export const PROFILES = {
+  // The true line: a readable thread of genuine coherence. The solution path is
+  // built from this so that *following the sense* leads you home — the game's
+  // original intent. Straying off it (the profiles below) is where text falls
+  // apart, so degradation honestly means "you have left the thread."
+  ridge(rand, len, { hi = 8, lo = 6 } = {}) {
+    return Array.from({ length: len }, () => clamp(lo + Math.round(rand() * (hi - lo))));
+  },
+
   // Order drops steadily. The honest path: you can feel coherence fading and
   // make an informed decision to retreat.
   steady_decline(rand, len, { hi = 7, lo = 2 } = {}) {
