@@ -180,6 +180,24 @@ P.audio = (function () {
     });
   }
 
+  // Recovering a page of the older book: one clear, unwavering tone with a soft
+  // octave above — the only pure sound in the library, because it marks the only
+  // pure thing in it. Brief, quiet, certain.
+  function recovered() {
+    if (!ctx || !enabled) return;
+    const t = ctx.currentTime;
+    const g = ctx.createGain();
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(0.12, t + 0.03);
+    g.gain.exponentialRampToValueAtTime(0.0004, t + 2.2);
+    g.connect(master);
+    [[523.25, 1], [1046.5, 0.18]].forEach(([freq, amp]) => {
+      const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = freq;
+      const og = ctx.createGain(); og.gain.value = amp;
+      o.connect(og); og.connect(g); o.start(t); o.stop(t + 2.3);
+    });
+  }
+
   // The exit: fade everything to true silence.
   function silence() {
     if (!ctx) return;
@@ -187,5 +205,5 @@ P.audio = (function () {
     [noiseGain, droneGain, formantGain].forEach((g) => g && g.gain.setTargetAtTime(0, t, 0.8));
   }
 
-  return { setEnabled, setCoherence, setZone, pageTurn, crossing, descend, silence, isEnabled: () => enabled, start: () => { if (enabled) ensure(); started = true; void started; } };
+  return { setEnabled, setCoherence, setZone, pageTurn, crossing, descend, recovered, silence, isEnabled: () => enabled, start: () => { if (enabled) ensure(); started = true; void started; } };
 })();

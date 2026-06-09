@@ -109,10 +109,14 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
 
   // A corridor of `len` rooms from aId, optionally to bId, tagged into a stratum.
   // Returns every room it created so the caller can grow a bounded region.
-  const corridor = (aId, bId, theme, stratum, profileName, lenRange = [cfg.corridorMin, cfg.corridorMax]) => {
+  const corridor = (aId, bId, theme, stratum, profileName, lenRange = [cfg.corridorMin, cfg.corridorMax], headOrder = null) => {
     const len = randInt(b.rand, lenRange[0], lenRange[1]);
     const profile = profileName ?? weightedProfile(b.rand);
     const orders = PROFILES[profile](b.rand, len, {});
+    // A coherent mouth on a wrong turn: the fork can't be solved from the
+    // hallway preview alone, so the decision is a reading, not a glance. The
+    // decay arrives one room later — a wrong turn costs a step, not nothing.
+    if (headOrder != null) orders[0] = headOrder;
     const ids = [];
     let prev = aId;
     for (let i = 0; i < len; i++) {
@@ -155,8 +159,12 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
     let guard = 0;
     const target = cfg.roomsPerStratum;
     while (region.length < target && guard++ < target * 6) {
-      const anchorId = pick(b.rand, b.rand() < 0.6 ? ridgeNodes : (spurs.length ? spurs : ridgeNodes));
-      const made = corridor(anchorId, null, theme, s, weightedProfile(b.rand), [2, cfg.corridorMax]);
+      const onRidge = b.rand() < 0.6;
+      const anchorId = pick(b.rand, onRidge ? ridgeNodes : (spurs.length ? spurs : ridgeNodes));
+      // ~half the wrong turns directly off the ridge open coherently and only
+      // decay a room in — the fork demands reading the room, not the preview.
+      const headOrder = onRidge && b.rand() < 0.5 ? randInt(b.rand, 5, 7) : null;
+      const made = corridor(anchorId, null, theme, s, weightedProfile(b.rand), [2, cfg.corridorMax], headOrder);
       made.ids.forEach((id) => { region.push(id); spurs.push(id); });
     }
 
@@ -271,7 +279,12 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
   const unders = shuffle(underRand, UNDERTEXT);
   let ui = 0;
   for (const n of shuffle(underRand, underPool)) {
-    if (underRand() < 0.35) n.under = unders[ui++ % unders.length];
+    if (underRand() < 0.35) {
+      n.under = unders[ui++ % unders.length];
+      // stable identity within the one buried book, so recovering a page means
+      // something across runs (the Restoration — see DECISIONS.md)
+      n.underIdx = UNDERTEXT.indexOf(n.under);
+    }
   }
 
   // ---- 7. Previews (peer down each hall) ----------------------------------
@@ -296,6 +309,7 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
       themes: [...new Set([...b.nodes.values()].map((n) => n.themeLabel))],
       bleedCount: [...b.nodes.values()].filter((n) => n.bleed).length,
       underCount: [...b.nodes.values()].filter((n) => n.under).length,
+      underTotal: UNDERTEXT.length, // how many pages the older book ever had
       stats: report.stats,
       codas: EXIT_CODAS, // behavior-keyed endings, read by the runtime
     },
@@ -308,6 +322,7 @@ export async function build({ scale = 'minimal', seed = SEED } = {}) {
       profile: n.profile, authored: n.authored || undefined,
       bleed: n.bleed || undefined,
       under: n.under || undefined,
+      underIdx: n.underIdx ?? undefined,
       stratum: n.stratum ?? 0,
       sanctuary: n.sanctuary || undefined,
       entry: n.entry || undefined,

@@ -7,22 +7,42 @@
  *   · STATUS / TAGS / your NOTES / the COMPASS — drift freely. The instruments lie.
  */
 P.render = (function () {
-  const { el, h, clamp } = P.core;
+  const { el, h, clamp, rng, pick } = P.core;
   let selIndex = 0;
-  const WEAR_REVEAL = 3; // visits before the surface first wears through
-  const WEAR_FULL = 6;   // visits to fully excavate the under-text
+
+  // Most of the older book did not survive the overwriting. Worn pages with
+  // nothing beneath wear through to one of these — the gamble that makes a
+  // surviving page precious. Deterministic per room, like everything else.
+  const SCRAPED = [
+    'the page wears through to nothing. whatever was written beneath did not survive the overwriting.',
+    'beneath the surface: only the scrape marks. the older words are gone from here.',
+    'the page thins to blank vellum. something was scraped away too well.',
+    'worn through. under it, the ghost of ink with no letters left in it.',
+    'nothing beneath but the grain of the page and the marks of the knife.',
+  ];
 
   // Render the buried older book, excavated in proportion to how worn the page is.
-  function renderUnderText(n, wear, reader) {
+  function renderUnderText(n, wear, reader, justRecovered) {
+    const { reveal, full } = P.engine.WEAR;
     const words = n.under.split(' ');
-    const frac = clamp((wear - (WEAR_REVEAL - 1)) / (WEAR_FULL - (WEAR_REVEAL - 1)));
+    const frac = clamp((wear - (reveal - 1)) / (full - (reveal - 1)));
     const shown = Math.max(1, Math.floor(frac * words.length));
     const block = h('div', { class: 'underpage' });
     block.appendChild(h('div', { class: 'underpage-label' },
-      frac >= 1 ? 'the page is worn through; older writing beneath:' : 'the page is wearing thin; older writing shows beneath:'));
+      frac >= 1
+        ? (justRecovered ? 'the page is worn through — an older page, recovered. it will keep.' : 'the page is worn through; older writing beneath:')
+        : 'the page is wearing thin; older writing shows beneath:'));
     const text = h('div', { class: 'undertext' });
     words.forEach((w, i) => text.appendChild(h('span', { class: i < shown ? 'u-shown' : 'u-hidden' }, w + ' ')));
     block.appendChild(text);
+    reader.appendChild(block);
+  }
+
+  // A page worn through to nothing — most of the older book is simply gone.
+  function renderScrapedBlank(n, reader) {
+    const line = pick(rng(n.id + '|scraped'), SCRAPED);
+    const block = h('div', { class: 'underpage scraped' });
+    block.appendChild(h('div', { class: 'underpage-label' }, line));
     reader.appendChild(block);
   }
 
@@ -67,14 +87,24 @@ P.render = (function () {
     if (n.sanctuary) {
       reader.appendChild(h('div', { class: 'sanctuary-head' }, '✦  ' + n.themeLabel + '  ·  a sanctuary  ✦'));
     }
+    // PALIMPSEST, literal: EVERY noise page wears with revisits. Most wear
+    // through to nothing — the older book did not survive there. A third hide a
+    // surviving page, excavated word by word, immune to the drift, and kept
+    // forever once fully recovered. Wearing a page is a gamble.
     const wear = P.engine.visitedCount(n.id);
-    const worn = n.under && wear >= WEAR_REVEAL;
+    const wearable = (n.kind === 'corridor' || n.kind === 'mimic') && !n.authored && !n.descent;
+    const worn = wearable && wear >= P.engine.WEAR.reveal;
     reader.appendChild(h('div', { class: 'passage' + (n.sanctuary ? ' sanctuary' : '') + (worn ? ' worn' : '') }, n.text));
 
-    // PALIMPSEST, literal: walk a room enough and its surface wears thin, and an
-    // older authored book shows through from beneath — excavated word by word,
-    // and immune to the drift, because it is the one true thing in the room.
-    if (worn) renderUnderText(n, wear, reader);
+    if (worn) {
+      if (n.under) {
+        const recoveredNow = P.engine.justRecovered();
+        renderUnderText(n, wear, reader, recoveredNow);
+        if (recoveredNow && P.audio.recovered) P.audio.recovered();
+      } else {
+        renderScrapedBlank(n, reader);
+      }
+    }
 
     // A trace of someone who passed through.
     const ghost = P.ghosts.forNode(n);

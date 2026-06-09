@@ -15,6 +15,11 @@
 P.engine = (function () {
   const { clamp, rng, pick } = P.core;
 
+  // Wear: every noise page thins with revisits. At `reveal` the surface starts
+  // wearing through; at `full` it is worn to whatever lies beneath — an older
+  // page (recovered, kept forever) or nothing at all.
+  const WEAR = { reveal: 3, full: 6 };
+
   const PRESENCE = [
     'this mark is fresh. it was not here when you passed before.',
     'someone has been through since you left — the dust is disturbed.',
@@ -104,6 +109,13 @@ P.engine = (function () {
     meta.steps++;
     if (state.run.visited[toId] === 1) meta.nodesRead++;
     if ((target.stratum ?? 0) > (meta.deepestEver ?? 0)) meta.deepestEver = target.stratum;
+
+    // The Restoration: the visit that wears a buried page fully through recovers
+    // it — into the one record the drift can never touch.
+    state.justRecovered = false;
+    if (target.under && state.run.visited[toId] >= WEAR.full) {
+      state.justRecovered = P.persist.recoverPage(target.underIdx, target.under);
+    }
 
     // A sanctuary clears the residue: arriving at an oasis heals the drift, so
     // the HUD comes back to truth and you can rest and orient.
@@ -227,6 +239,8 @@ P.engine = (function () {
     regionChanged: () => state.regionChanged,
     enteredRegion: () => state.enteredRegion,
     descend, stratum, totalStrata, strataRemaining,
+    WEAR,
+    justRecovered: () => state.justRecovered,
     justDescended: () => state.justDescended,
     clearDescended: () => { state.justDescended = null; },
     falseStairTaken: () => { const f = state.falseStair; state.falseStair = false; return f; },

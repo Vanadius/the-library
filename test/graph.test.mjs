@@ -130,7 +130,33 @@ test('an older book is buried beneath worn pages (under-text)', () => {
   for (const n of buried) {
     assert.ok(n.kind === 'corridor' || n.kind === 'mimic', 'under-text only beneath the noise rooms');
     assert.ok(typeof n.under === 'string' && n.under.length > 20);
+    assert.ok(Number.isInteger(n.underIdx) && n.underIdx >= 0, 'every buried page has a stable identity (the Restoration)');
   }
+  assert.ok(graph.meta.underTotal >= 20, 'the older book has a known page count');
+  const distinct = new Set(buried.map((n) => n.underIdx));
+  assert.ok(distinct.size >= Math.min(graph.meta.underTotal, 15), 'most pages of the older book are findable in this world');
+});
+
+test('the solution path is a coherence ridge; wrong turns degrade', () => {
+  // The recovered original intent: a readable true line, decay off it. Walk the
+  // nav-graph shortest path and assert it never drops into salad; then check the
+  // rest of the corridors are, on average, muddier than the path.
+  const prev = new Map([[graph.start, null]]);
+  const q = [graph.start];
+  while (q.length) {
+    const cur = q.shift();
+    if (cur === graph.exit) break;
+    for (const to of navOut(cur)) if (!prev.has(to)) { prev.set(to, cur); q.push(to); }
+  }
+  const path = []; let c = graph.exit;
+  while (c != null) { path.unshift(c); c = prev.get(c); }
+  const cohs = path.map((id) => N[id].coherence);
+  assert.ok(Math.min(...cohs) >= 0.55, 'no forced salad on the true path');
+  const pathMean = cohs.reduce((a, b) => a + b, 0) / cohs.length;
+  const onPath = new Set(path);
+  const off = Object.values(N).filter((n) => !onPath.has(n.id) && n.kind === 'corridor');
+  const offMean = off.reduce((a, n) => a + n.coherence, 0) / off.length;
+  assert.ok(pathMean > offMean + 0.1, 'the true path reads better than the wrong turns');
 });
 
 test('behavior-keyed endings are baked into the graph meta', () => {

@@ -19,6 +19,9 @@ P.persist = (function () {
     steps: 0,         // cumulative moves
     runs: 0,
     everFound: false,
+    recovered: {},    // the Restoration: pages of the older book, idx -> text.
+                      // Persist across runs AND rebuilds — the buried book is the
+                      // same book in every world; what you have recovered, you keep.
     firstSeen: Date.now(),
   });
 
@@ -37,6 +40,20 @@ P.persist = (function () {
   return {
     meta() { return meta; },
     saveMeta() { save(META_KEY, meta); },
+
+    // The Restoration: record a fully-excavated page of the older book.
+    recoverPage(idx, text) {
+      if (idx == null || idx < 0) return false;
+      if (!meta.recovered) meta.recovered = {};
+      if (meta.recovered[idx]) return false;
+      meta.recovered[idx] = text;
+      save(META_KEY, meta);
+      return true; // newly recovered
+    },
+    recoveredPages() {
+      const rec = meta.recovered || {};
+      return Object.keys(rec).map(Number).sort((a, b) => a - b).map((i) => ({ idx: i, text: rec[i] }));
+    },
 
     loadRun(seed) {
       const r = load(runKey(seed), () => newRun(seed));

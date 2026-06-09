@@ -86,6 +86,13 @@ body::after { /* drift haze: a cold film that thickens in the deep */
 .undertext { color: #d9c7a4; font-style: italic; line-height: 1.7; text-shadow: 0 0 6px rgba(180,150,90,0.18); }
 .undertext .u-shown { color: #ecdcb4; }      /* excavated, legible — and drift never touches it */
 .undertext .u-hidden { color: #6a5c40; opacity: 0.5; }  /* still buried; wear the page more */
+.underpage.scraped .underpage-label { color: #7a6a50; font-style: italic; text-transform: none; letter-spacing: 0.04em; }
+
+/* the Restoration — recovered pages in the journal, and the tallies on screens */
+.recovered-head { color: #ecdcb4; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; margin: 26px 0 12px; padding-top: 16px; border-top: 1px dashed rgba(160,140,110,0.3); }
+.entry.recovered-entry { border-left-color: #b89a5e; }
+.recovered-text { color: #ecdcb4; font-style: italic; }
+#screen .meta-line.restored { color: #b89a5e; }
 
 .ghost { color: var(--amber-dim); font-style: italic; opacity: 0.62; font-size: 14px; margin: 18px 0 6px; }
 .ghost::before { content: "— "; }

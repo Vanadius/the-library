@@ -60,6 +60,13 @@ At the very bottom is the one page written for you. You will know it when you re
         ? h('div', { class: 'meta-line' }, `${meta.nodesRead} rooms read · ${meta.runs} ${meta.runs === 1 ? 'descent' : 'descents'}${meta.everFound ? ' · you have found it before' : ''}`)
         : h('div', { class: 'meta-line' }, 'press · then read'),
     );
+    // The Restoration, standing across runs: what you wore through, you keep.
+    const recovered = P.persist.recoveredPages().length;
+    if (recovered > 0) {
+      const underTotal = (graph.meta && graph.meta.underTotal) || 24;
+      screen.append(h('div', { class: 'meta-line restored' },
+        `of the older book: ${recovered} of ${underTotal} pages recovered`));
+    }
     // Reset, only offered once there's something to forget.
     if (meta.nodesRead > 0 || P.engine.run().steps > 0) {
       screen.append(h('button', { class: 'forget', onclick: forgetEverything }, 'forget everything'));
@@ -67,7 +74,7 @@ At the very bottom is the one page written for you. You will know it when you re
   }
 
   function forgetEverything() {
-    if (!confirm('Forget everything? This erases your position, your notes, and the reading you have done — the compass re-locks and you arrive new. This cannot be undone.')) return;
+    if (!confirm('Forget everything? This erases your position, your notes, the pages of the older book you recovered, and the reading you have done — the compass re-locks and you arrive new. This cannot be undone.')) return;
     P.persist.wipe();
     P.engine.newRun();
     buildTitle(window.GRAPH);
@@ -124,7 +131,7 @@ At the very bottom is the one page written for you. You will know it when you re
       h('p', { class: 'legend-note' },
         'One thing never drifts: the passage you are reading. The incoherence there is real — in the words themselves, never in the ink.'),
       h('p', { class: 'legend-note' },
-        'And some pages, walked enough times, wear thin — and an older book shows through from beneath, a little more of it each time you return. That older writing is the one thing the noise cannot corrupt. The rooms you wear most are the ones you keep coming back to.'),
+        'Every page in the halls wears thin if you walk it enough. Most wear through to nothing — the older book did not survive there. But under some, older writing shows, a little more each visit; wear one fully through and the page is recovered into your journal, where it keeps forever and never drifts. Wearing a page is a gamble. The survivors are worth it.'),
       h('p', { class: 'legend-note dim' },
         'None of these marks know where the door is. Only reading does.'),
       h('div', { class: 'jbtns' }, h('button', { onclick: closeKey }, 'close')),
@@ -152,6 +159,24 @@ At the very bottom is the one page written for you. You will know it when you re
         h('div', null, text),
       ]));
     });
+
+    // The Restoration. Your own notes rot with the drift; the pages you wore
+    // through and recovered do not — they are the one record in your keeping the
+    // library cannot touch. The page numbers show the gaps: most of the book is
+    // still down there, or gone for good.
+    const pages = P.persist.recoveredPages();
+    if (pages.length) {
+      const total = (window.GRAPH && window.GRAPH.meta && window.GRAPH.meta.underTotal) || 24;
+      entries.appendChild(h('div', { class: 'recovered-head' },
+        `the recovered pages · ${pages.length} of ${total} · these do not drift`));
+      pages.forEach((p) => {
+        entries.appendChild(h('div', { class: 'entry recovered-entry' }, [
+          h('div', { class: 'meta' }, 'page ' + (p.idx + 1)),
+          h('div', { class: 'recovered-text' }, p.text),
+        ]));
+      });
+    }
+
     j.classList.add('open');
     el('journal-text').focus();
   }
@@ -178,6 +203,14 @@ At the very bottom is the one page written for you. You will know it when you re
       h('div', { class: 'sub' }, 'the door was the reading'),
       h('div', { class: 'intro' }, intro),
       h('div', { class: 'meta-line' }, `${meta.nodesRead} rooms · ${meta.runs} ${meta.runs === 1 ? 'descent' : 'descents'} · one sentence that was waiting`),
+      (() => {
+        // What you carried out: the pages you wore through on the way down.
+        const pages = P.persist.recoveredPages().length;
+        const underTotal = (window.GRAPH && window.GRAPH.meta && window.GRAPH.meta.underTotal) || 24;
+        return pages > 0
+          ? h('div', { class: 'meta-line restored' }, `and you carried out ${pages} ${pages === 1 ? 'page' : 'pages'} of the older book — of ${underTotal} it once had. they are in your journal. they will keep.`)
+          : h('div', { class: 'meta-line restored' }, 'you carried out none of the older book. it is still down there, under the pages you walked past only once.');
+      })(),
       h('button', { class: 'enter', onclick: () => { P.engine.newRun(); buildTitle(window.GRAPH); el('screen').classList.remove('hidden'); } }, 'go in again'),
       h('div', { class: 'meta-line' }, 'the world reshuffles only when it is rebuilt. these shelves remain. you, perhaps, do not.'),
     );

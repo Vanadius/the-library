@@ -352,3 +352,40 @@ has room to teach itself.
 This reverses the earlier deference to the bible's "coherence is purely a liar"
 line. The honest synthesis: coherence is mostly trustworthy *and* it lies at the
 forks — which is a truer picture of fluency-without-meaning than either extreme.
+
+---
+
+## The Restoration (universal wear, selective survival)
+
+Two changes that close the wear mechanic's open seam and give the game a second
+axis of progress.
+
+**Universal wear.** Previously only the ~⅓ of rooms with a buried fragment showed
+any wear, so the mechanic read as arbitrary — identical pages, one wears, one
+doesn't. Now *every* noise page wears with revisits. Most wear through to a
+**scraped blank** ("whatever was written beneath did not survive the
+overwriting") — because most of a palimpsest's underwriting is simply gone, which
+is the truest thing the mechanic can say. Wearing a page becomes a gamble; the
+surviving pages become precious.
+
+**The Restoration.** A page worn fully through is **recovered**: it enters a
+"recovered pages" panel in the journal and *persists across runs and even across
+rebuilds* (the buried book is the same book in every world). The panel is the
+deliberate inverse of the notes above it: your own journal rots with the drift;
+what you dug up never does. Page numbers ("page 10 · of 24") expose the gaps —
+most of the book is still down there, or gone for good. The title screen counts
+your restoration; the ending acknowledges what you carried out.
+
+Why it's safe under the One Rule: recovery rewards *returning and re-reading* —
+tenderness toward a place — and the under-text remains strictly non-navigational.
+A speedrunner gets the door; only a careful reader gets the book. It also gives
+meta-persistence a visible arc beyond the compass unlock: across many descents
+you are not just escaping the library, you are *restoring the book it erased*.
+
+**Fork ambiguity (the reviewer's knob).** With the ridge in place the worry
+inverted from "forced through salad" to "too findable." Now ~half the wrong turns
+directly off the ridge open with a coherent first room (decay arrives one room
+in), so a fork cannot be solved from the hallway preview — measured: 93% of ridge
+forks present a coherent third way. Decay still warns honestly; it just warns one
+step late, so a wrong turn costs a step instead of nothing, and the fork itself
+demands reading the room.
